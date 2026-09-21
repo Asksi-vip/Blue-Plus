@@ -124,10 +124,6 @@
 			android:theme="@style/AppTheme.FullScreen"
 			android:screenOrientation="landscape"
 			android:windowSoftInputMode="stateHidden" />
-		<activity
-			android:name=".DebugActivity"
-			android:screenOrientation="portrait"
-			android:theme="@style/AppTheme.DebugActivity" />
 		<provider
 			android:name="androidx.startup.InitializationProvider"
 			android:authorities="com.blue.plus.androidx-startup"
