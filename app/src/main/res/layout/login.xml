@@ -1,0 +1,170 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical">
+	<FrameLayout
+		android:id="@+id/linear1"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content">
+		<LinearLayout
+			android:id="@+id/loginCard"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:orientation="vertical">
+			<LinearLayout
+				android:id="@+id/header"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:paddingTop="15dp"
+				android:paddingBottom="15dp"
+				android:orientation="vertical">
+				<TextView
+					android:id="@+id/tvWelcome"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="Welcome"
+					android:textSize="18sp"
+					android:textColor="#FFFFFF" />
+				<TextView
+					android:id="@+id/tvSub"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="أدخل كود التفعيل"
+					android:textSize="14sp"
+					android:textColor="#FFFFFF" />
+			</LinearLayout>
+			<LinearLayout
+				android:id="@+id/inputArea"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:padding="15dp"
+				android:orientation="vertical">
+				<LinearLayout
+					android:id="@+id/layoutUserPass"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical" />
+				<LinearLayout
+					android:id="@+id/layoutActivation"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical" />
+				<CheckBox
+					android:id="@+id/cbActivation"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="Activation code"
+					android:textSize="12sp"
+					android:textColor="#FFFFFF" />
+				<TextView
+					android:id="@+id/btnLogin"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:paddingTop="12dp"
+					android:paddingBottom="12dp"
+					android:text="LOGIN"
+					android:textSize="16sp"
+					android:textColor="#FFFFFF" />
+				<TextView
+					android:id="@+id/tvMac"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:paddingTop="15dp"
+					android:text="getMacAddress().toLowerCase()"
+					android:textSize="12sp"
+					android:textColor="#88FFFFFF" />
+			</LinearLayout>
+		</LinearLayout>
+	</FrameLayout>
+	<LinearLayout
+		android:id="@+id/card"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:padding="20dp"
+		android:orientation="vertical">
+		<TextView
+			android:id="@+id/title"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Enter Playlist Name"
+			android:textSize="18sp"
+			android:textColor="#FFFFFF" />
+		<TextView
+			android:id="@+id/sub"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:paddingTop="10dp"
+			android:paddingBottom="20dp"
+			android:text="If you don't choose a name for the playlist, a name will be added automatically"
+			android:textSize="12sp"
+			android:textColor="#BBFFFFFF" />
+		<LinearLayout
+			android:id="@+id/inputRow"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:padding="10dp"
+			android:orientation="horizontal">
+			<ImageView
+				android:id="@+id/userIcon"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:src="@drawable/default_image"
+				android:scaleType="center" />
+			<EditText
+				android:id="@+id/etName"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:paddingLeft="10dp"
+				android:textSize="12sp"
+				android:hint="Ex : MOODTV" />
+		</LinearLayout>
+		<LinearLayout
+			android:id="@+id/btnRow"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:paddingTop="20dp"
+			android:orientation="horizontal">
+			<TextView
+				android:id="@+id/btnExit"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:padding="10dp"
+				android:text="EXIT"
+				android:textSize="12sp"
+				android:textColor="#FFFFFF" />
+			<TextView
+				android:id="@+id/btnSave"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:padding="10dp"
+				android:text="SAVE"
+				android:textSize="12sp"
+				android:textColor="#FFFFFF" />
+		</LinearLayout>
+	</LinearLayout>
+	<LinearLayout
+		android:id="@+id/row"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:paddingLeft="12dp"
+		android:paddingRight="12dp"
+		android:orientation="horizontal">
+		<ImageView
+			android:id="@+id/icon"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:src="@drawable/default_image"
+			android:scaleType="center" />
+		<EditText
+			android:id="@+id/et"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:paddingLeft="10dp"
+			android:textSize="13sp"
+			android:textColor="#FFFFFF"
+			android:hint="hint" />
+	</LinearLayout>
+</LinearLayout>

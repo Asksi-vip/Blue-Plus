@@ -1,0 +1,11 @@
+<com.google.android.exoplayer2.ui.StyledPlayerView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/playerView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    app:use_artwork="false"
+    app:controller_layout_id="@layout/player_controls"
+    app:show_timeout="5000"
+    app:hide_on_touch="true" />
