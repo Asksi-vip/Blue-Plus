@@ -27,6 +27,9 @@ import java.net.NetworkInterface;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import android.text.InputType;
+import android.text.method.PasswordTransformationMethod;
+import android.text.method.HideReturnsTransformationMethod;
 
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -84,57 +87,155 @@ public class LoginActivity extends Activity {
         float scale = getResources().getDisplayMetrics().density;
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         int screenWidth = dm.widthPixels;
+        boolean isTv = TvUtil.isAndroidTV(this);
         
         loginCard = new LinearLayout(this);
         
         FrameLayout.LayoutParams cardParams;
-        boolean isTv = TvUtil.isAndroidTV(this);
-        
         if (isTv) {
-            cardParams = new FrameLayout.LayoutParams((int)(350 * scale), -2);
+            cardParams = new FrameLayout.LayoutParams((int)(370 * scale), -2);
         } else {
-            // For mobile: 90% of width, but cap it at 320dp for a clean landscape look
-            int targetWidth = (int)(screenWidth * 0.9f);
-            int maxWidth = (int)(320 * scale);
+            // For mobile: 92% of screen width, max 330dp in landscape
+            int targetWidth = (int)(screenWidth * 0.92f);
+            int maxWidth = (int)(330 * scale);
             cardParams = new FrameLayout.LayoutParams(Math.min(targetWidth, maxWidth), -2);
         }
         cardParams.gravity = Gravity.CENTER;
         loginCard.setLayoutParams(cardParams);
         loginCard.setOrientation(LinearLayout.VERTICAL);
 
+        // iOS Frosted Glassmorphism Container
         GradientDrawable cardShape = new GradientDrawable();
-        cardShape.setCornerRadius(isTv ? 14 * scale : 10 * scale);
-        cardShape.setColor(Color.parseColor("#F2090915")); // High-density dark glassmorphic layout
-        cardShape.setStroke((int)(1.5f * scale), Color.parseColor("#662196F3")); // Sleek neon blue border
+        cardShape.setCornerRadius(isTv ? 20 * scale : 16 * scale);
+        cardShape.setColor(Color.parseColor("#E60F1422")); // Deep midnight translucent glass
+        cardShape.setStroke((int)(1.5f * scale), Color.parseColor("#3380B4FF")); // Specular light reflection border
         loginCard.setBackground(cardShape);
 
+        // Header Section with App Monogram & SF-style typography
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
         header.setGravity(Gravity.CENTER);
-        int headerPadding = (int)((isTv ? 10 : 5) * scale);
-        header.setPadding(0, headerPadding, 0, headerPadding);
-        header.setBackgroundColor(Color.TRANSPARENT);
+        int headerPadding = (int)((isTv ? 14 : 10) * scale);
+        header.setPadding(0, headerPadding, 0, (int)(4 * scale));
+
+        // Blue+ Badge Monogram
+        TextView tvBrand = new TextView(this);
+        tvBrand.setText("★ BLUE + ★");
+        tvBrand.setTextColor(Color.parseColor("#38B6FF"));
+        tvBrand.setTextSize(isTv ? 12 : 10);
+        tvBrand.setTypeface(null, android.graphics.Typeface.BOLD);
+        tvBrand.setGravity(Gravity.CENTER);
+        int badgePadH = (int)(10 * scale);
+        int badgePadV = (int)(3 * scale);
+        tvBrand.setPadding(badgePadH, badgePadV, badgePadH, badgePadV);
+        GradientDrawable badgeBg = new GradientDrawable();
+        badgeBg.setColor(Color.parseColor("#220A84FF"));
+        badgeBg.setCornerRadius(10 * scale);
+        badgeBg.setStroke((int)(1 * scale), Color.parseColor("#4438B6FF"));
+        tvBrand.setBackground(badgeBg);
+        header.addView(tvBrand);
 
         TextView tvWelcome = new TextView(this);
         tvWelcome.setText(TvUtil.translate(this, "Welcome"));
         tvWelcome.setTextColor(Color.WHITE);
-        tvWelcome.setTextSize(isTv ? 18 : 15);
+        tvWelcome.setTextSize(isTv ? 20 : 16);
+        tvWelcome.setTypeface(null, android.graphics.Typeface.BOLD);
         tvWelcome.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams welcomeLp = new LinearLayout.LayoutParams(-2, -2);
+        welcomeLp.topMargin = (int)(6 * scale);
+        tvWelcome.setLayoutParams(welcomeLp);
         header.addView(tvWelcome);
 
         TextView tvSub = new TextView(this);
         tvSub.setText(TvUtil.translate(this, "Enter activation code"));
-        tvSub.setTextColor(Color.WHITE);
-        tvSub.setTextSize(isTv ? 14 : 11);
+        tvSub.setTextColor(Color.parseColor("#90FFFFFF"));
+        tvSub.setTextSize(isTv ? 13 : 11);
         tvSub.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(-2, -2);
+        subLp.topMargin = (int)(2 * scale);
+        tvSub.setLayoutParams(subLp);
         header.addView(tvSub);
 
         loginCard.addView(header);
 
         LinearLayout inputArea = new LinearLayout(this);
         inputArea.setOrientation(LinearLayout.VERTICAL);
-        int areaPadding = (int)((isTv ? 12 : 8) * scale);
-        inputArea.setPadding(areaPadding, 0, areaPadding, areaPadding);
+        int areaPaddingH = (int)((isTv ? 18 : 14) * scale);
+        int areaPaddingB = (int)((isTv ? 16 : 12) * scale);
+        inputArea.setPadding(areaPaddingH, (int)(8 * scale), areaPaddingH, areaPaddingB);
+
+        // iOS Segmented Control (Capsule Switcher)
+        final LinearLayout segmentedContainer = new LinearLayout(this);
+        segmentedContainer.setOrientation(LinearLayout.HORIZONTAL);
+        segmentedContainer.setGravity(Gravity.CENTER);
+        int segHeight = (int)((isTv ? 40 : 34) * scale);
+        LinearLayout.LayoutParams segParams = new LinearLayout.LayoutParams(-1, segHeight);
+        segParams.topMargin = (int)(4 * scale);
+        segParams.bottomMargin = (int)(10 * scale);
+        segmentedContainer.setLayoutParams(segParams);
+        segmentedContainer.setPadding((int)(3 * scale), (int)(3 * scale), (int)(3 * scale), (int)(3 * scale));
+
+        final GradientDrawable segBg = new GradientDrawable();
+        segBg.setColor(Color.parseColor("#1CFFFFFF"));
+        segBg.setCornerRadius(12 * scale);
+        segBg.setStroke((int)(1 * scale), Color.parseColor("#25FFFFFF"));
+        segmentedContainer.setBackground(segBg);
+
+        final TextView tabUserPass = new TextView(this);
+        tabUserPass.setText(TvUtil.translate(this, "username"));
+        tabUserPass.setGravity(Gravity.CENTER);
+        tabUserPass.setTextSize(isTv ? 13 : 11);
+        tabUserPass.setFocusable(true);
+        LinearLayout.LayoutParams tab1Lp = new LinearLayout.LayoutParams(0, -1, 1f);
+        tabUserPass.setLayoutParams(tab1Lp);
+
+        final TextView tabActivation = new TextView(this);
+        tabActivation.setText(TvUtil.translate(this, "Activation code"));
+        tabActivation.setGravity(Gravity.CENTER);
+        tabActivation.setTextSize(isTv ? 13 : 11);
+        tabActivation.setFocusable(true);
+        LinearLayout.LayoutParams tab2Lp = new LinearLayout.LayoutParams(0, -1, 1f);
+        tabActivation.setLayoutParams(tab2Lp);
+
+        // Helper to update iOS Segmented Tab aesthetics
+        final Runnable updateSegmentStyles = new Runnable() {
+            @Override
+            public void run() {
+                boolean isActivation = (layoutActivation != null && layoutActivation.getVisibility() == View.VISIBLE);
+                
+                GradientDrawable activeTabBg = new GradientDrawable();
+                activeTabBg.setColor(Color.parseColor("#0A84FF")); // iOS System Blue
+                activeTabBg.setCornerRadius(9 * getResources().getDisplayMetrics().density);
+
+                GradientDrawable inactiveTabBg = new GradientDrawable();
+                inactiveTabBg.setColor(Color.TRANSPARENT);
+
+                if (!isActivation) {
+                    tabUserPass.setBackground(activeTabBg);
+                    tabUserPass.setTextColor(Color.WHITE);
+                    tabUserPass.setTypeface(null, android.graphics.Typeface.BOLD);
+
+                    tabActivation.setBackground(inactiveTabBg);
+                    tabActivation.setTextColor(Color.parseColor("#99FFFFFF"));
+                    tabActivation.setTypeface(null, android.graphics.Typeface.NORMAL);
+                } else {
+                    tabActivation.setBackground(activeTabBg);
+                    tabActivation.setTextColor(Color.WHITE);
+                    tabActivation.setTypeface(null, android.graphics.Typeface.BOLD);
+
+                    tabUserPass.setBackground(inactiveTabBg);
+                    tabUserPass.setTextColor(Color.parseColor("#99FFFFFF"));
+                    tabUserPass.setTypeface(null, android.graphics.Typeface.NORMAL);
+                }
+            }
+        };
+
+        TvUtil.applyTvFocusHighlight(tabUserPass, 9.0f);
+        TvUtil.applyTvFocusHighlight(tabActivation, 9.0f);
+
+        segmentedContainer.addView(tabUserPass);
+        segmentedContainer.addView(tabActivation);
+        inputArea.addView(segmentedContainer);
 
         layoutUserPass = new LinearLayout(this);
         layoutUserPass.setOrientation(LinearLayout.VERTICAL);
@@ -152,34 +253,58 @@ public class LoginActivity extends Activity {
 
         inputArea.addView(layoutActivation);
 
+        // Hidden dummy CheckBox for 100% backward compatibility with existing listeners
         cbActivation = new CheckBox(this);
-        cbActivation.setText(TvUtil.translate(this, "Activation code"));
-        cbActivation.setTextColor(Color.WHITE);
-        cbActivation.setTextSize(isTv ? 14 : 11);
-        LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(-2, -2);
-        cbParams.topMargin = (int)((isTv ? 10 : 4) * scale);
-        cbActivation.setLayoutParams(cbParams);
-        TvUtil.applyTvFocusHighlight(cbActivation);
+        cbActivation.setVisibility(View.GONE);
         inputArea.addView(cbActivation);
 
+        // Set Tab Click Listeners
+        tabUserPass.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                layoutUserPass.setVisibility(View.VISIBLE);
+                layoutActivation.setVisibility(View.GONE);
+                cbActivation.setChecked(false);
+                updateSegmentStyles.run();
+                if (etUser != null) etUser.requestFocus();
+            }
+        });
+
+        tabActivation.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                layoutUserPass.setVisibility(View.GONE);
+                layoutActivation.setVisibility(View.VISIBLE);
+                cbActivation.setChecked(true);
+                updateSegmentStyles.run();
+                if (etActivation != null) etActivation.requestFocus();
+            }
+        });
+
+        updateSegmentStyles.run();
+
+        // Modern iOS Primary Action Button
         TextView btnLogin = new TextView(this);
-        btnLogin.setText(TvUtil.translate(this, "LOGIN"));
+        btnLogin.setText(TvUtil.translate(this, "LOGIN") + "  ➔");
         btnLogin.setTextColor(Color.WHITE);
+        btnLogin.setTypeface(null, android.graphics.Typeface.BOLD);
         btnLogin.setGravity(Gravity.CENTER);
         btnLogin.setTextSize(isTv ? 16 : 14);
-        int btnPadding = (int)((isTv ? 10 : 6) * scale);
+        int btnPadding = (int)((isTv ? 12 : 9) * scale);
         btnLogin.setPadding(0, btnPadding, 0, btnPadding);
         LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(-1, -2);
-        btnParams.topMargin = (int)((isTv ? 12 : 8) * scale);
+        btnParams.topMargin = (int)((isTv ? 14 : 10) * scale);
         btnLogin.setLayoutParams(btnParams);
 
-        GradientDrawable btnBg = new GradientDrawable();
-        btnBg.setColor(Color.parseColor("#222196F3")); 
-        btnBg.setStroke(2, Color.parseColor("#2196F3"));
-        btnBg.setCornerRadius(10 * scale);
+        // iOS Vibrant Blue Gradient Button
+        GradientDrawable btnBg = new GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            new int[]{Color.parseColor("#0A84FF"), Color.parseColor("#0055D4")}
+        );
+        btnBg.setCornerRadius(12 * scale);
         btnLogin.setBackground(btnBg);
         
-        TvUtil.applyTvFocusHighlight(btnLogin);
+        TvUtil.applyTvFocusHighlight(btnLogin, 12.0f);
         
         btnLogin.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -189,13 +314,34 @@ public class LoginActivity extends Activity {
         });
         inputArea.addView(btnLogin);
 
+        // Clean iOS Hardware MAC Chip (Footer)
+        LinearLayout macContainer = new LinearLayout(this);
+        macContainer.setOrientation(LinearLayout.HORIZONTAL);
+        macContainer.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams macParams = new LinearLayout.LayoutParams(-2, -2);
+        macParams.gravity = Gravity.CENTER_HORIZONTAL;
+        macParams.topMargin = (int)((isTv ? 12 : 8) * scale);
+        macContainer.setLayoutParams(macParams);
+        macContainer.setPadding((int)(10 * scale), (int)(3 * scale), (int)(10 * scale), (int)(3 * scale));
+
+        GradientDrawable macBg = new GradientDrawable();
+        macBg.setColor(Color.parseColor("#14FFFFFF"));
+        macBg.setCornerRadius(10 * scale);
+        macBg.setStroke((int)(1 * scale), Color.parseColor("#20FFFFFF"));
+        macContainer.setBackground(macBg);
+
+        TextView tvMacIcon = new TextView(this);
+        tvMacIcon.setText("🖥️ ");
+        tvMacIcon.setTextSize(isTv ? 11 : 9);
+        macContainer.addView(tvMacIcon);
+
         TextView tvMac = new TextView(this);
-        tvMac.setText(getMacAddress().toLowerCase());
-        tvMac.setTextColor(Color.parseColor("#88FFFFFF"));
-        tvMac.setGravity(Gravity.CENTER);
-        tvMac.setTextSize(isTv ? 12 : 9);
-        tvMac.setPadding(0, (int)((isTv ? 8 : 4) * scale), 0, 0);
-        inputArea.addView(tvMac);
+        tvMac.setText("MAC: " + getMacAddress().toLowerCase());
+        tvMac.setTextColor(Color.parseColor("#90FFFFFF"));
+        tvMac.setTextSize(isTv ? 11 : 9);
+        macContainer.addView(tvMac);
+
+        inputArea.addView(macContainer);
 
         loginCard.addView(inputArea);
 
@@ -211,19 +357,6 @@ public class LoginActivity extends Activity {
         scrollView.addView(cardWrapper);
 
         rootLayout.addView(scrollView);
-
-        cbActivation.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    layoutUserPass.setVisibility(View.GONE);
-                    layoutActivation.setVisibility(View.VISIBLE);
-                } else {
-                    layoutUserPass.setVisibility(View.VISIBLE);
-                    layoutActivation.setVisibility(View.GONE);
-                }
-            }
-        });
     }
 
     private void handleLogin() {
@@ -694,42 +827,51 @@ public class LoginActivity extends Activity {
         Toast.makeText(this, TvUtil.translate(this, "تم حفظ قائمة التشغيل بنجاح"), Toast.LENGTH_SHORT).show();
     }
 
-    private EditText createInput(LinearLayout container, String hint, int iconRes) {
+    private EditText createInput(LinearLayout container, final String hint, int iconRes) {
         float scale = getResources().getDisplayMetrics().density;
         boolean isTv = TvUtil.isAndroidTV(this);
+        final boolean isPassword = "password".equalsIgnoreCase(hint);
         
         final LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
 
         final GradientDrawable rowBg = new GradientDrawable();
-        rowBg.setColor(Color.parseColor("#33FFFFFF"));
-        rowBg.setCornerRadius(10 * scale);
+        rowBg.setColor(Color.parseColor("#1AFFFFFF")); // iOS ultra-thin frosted dark surface
+        rowBg.setCornerRadius(12 * scale);
+        rowBg.setStroke((int)(1 * scale), Color.parseColor("#26FFFFFF")); // Subtle specular border
         row.setBackground(rowBg);
 
-        int rowHeight = (int)((isTv ? 40 : 32) * scale);
+        int rowHeight = (int)((isTv ? 44 : 36) * scale);
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, rowHeight);
-        rowParams.topMargin = (int)((isTv ? 10 : 6) * scale);
+        rowParams.topMargin = (int)((isTv ? 10 : 7) * scale);
         row.setLayoutParams(rowParams);
-        int paddingSide = (int)((isTv ? 12 : 10) * scale);
+        int paddingSide = (int)((isTv ? 14 : 11) * scale);
         row.setPadding(paddingSide, 0, paddingSide, 0);
 
         ImageView icon = new ImageView(this);
-        int iconSize = (int)((isTv ? 18 : 16) * scale);
+        int iconSize = (int)((isTv ? 20 : 17) * scale);
         icon.setLayoutParams(new LinearLayout.LayoutParams(iconSize, iconSize));
         icon.setImageResource(iconRes);
-        icon.setColorFilter(Color.WHITE);
+        icon.setColorFilter(Color.parseColor("#38B6FF")); // Vibrant iOS System Blue accent
         row.addView(icon);
 
-        EditText et = new EditText(this);
+        final EditText et = new EditText(this);
         et.setHint(TvUtil.translate(this, hint));
-        et.setHintTextColor(Color.parseColor("#AAFFFFFF"));
+        et.setHintTextColor(Color.parseColor("#80FFFFFF"));
         et.setTextColor(Color.WHITE);
         et.setBackgroundColor(Color.TRANSPARENT);
-        et.setTextSize(isTv ? 13 : 12);
-        et.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
-        et.setPadding((int)(10 * scale), 0, 0, 0);
+        et.setTextSize(isTv ? 14 : 12);
+        LinearLayout.LayoutParams etParams = new LinearLayout.LayoutParams(0, -1, 1f);
+        etParams.leftMargin = (int)(10 * scale);
+        etParams.rightMargin = (int)(6 * scale);
+        et.setLayoutParams(etParams);
         et.setSingleLine(true);
+        
+        if (isPassword) {
+            et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            et.setTransformationMethod(PasswordTransformationMethod.getInstance());
+        }
 
         // Highlight the entire row wrapper when the EditText gains focus on smart TVs
         et.setOnFocusChangeListener(new View.OnFocusChangeListener() {
@@ -738,9 +880,9 @@ public class LoginActivity extends Activity {
                 float sc = v.getContext().getResources().getDisplayMetrics().density;
                 if (hasFocus) {
                     GradientDrawable focusBg = new GradientDrawable();
-                    focusBg.setColor(Color.parseColor("#2200E5FF"));
-                    focusBg.setCornerRadius(10 * sc);
-                    focusBg.setStroke((int)(2 * sc), Color.parseColor("#00E5FF"));
+                    focusBg.setColor(Color.parseColor("#24007AFF")); // iOS System Blue tint
+                    focusBg.setCornerRadius(12 * sc);
+                    focusBg.setStroke((int)(2 * sc), Color.parseColor("#0A84FF")); // Glowing active border
                     row.setBackground(focusBg);
                 } else {
                     row.setBackground(rowBg);
@@ -749,6 +891,35 @@ public class LoginActivity extends Activity {
         });
 
         row.addView(et);
+
+        // Password show/hide eye toggle button
+        if (isPassword) {
+            final ImageView eyeToggle = new ImageView(this);
+            int eyeSize = (int)((isTv ? 22 : 18) * scale);
+            eyeToggle.setLayoutParams(new LinearLayout.LayoutParams(eyeSize, eyeSize));
+            eyeToggle.setImageResource(android.R.drawable.ic_menu_view);
+            eyeToggle.setColorFilter(Color.parseColor("#80FFFFFF"));
+            eyeToggle.setFocusable(true);
+            TvUtil.applyTvFocusHighlight(eyeToggle, 6.0f);
+            
+            final boolean[] isVisible = {false};
+            eyeToggle.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    isVisible[0] = !isVisible[0];
+                    if (isVisible[0]) {
+                        et.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                        eyeToggle.setColorFilter(Color.parseColor("#0A84FF"));
+                    } else {
+                        et.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                        eyeToggle.setColorFilter(Color.parseColor("#80FFFFFF"));
+                    }
+                    et.setSelection(et.getText().length());
+                }
+            });
+            row.addView(eyeToggle);
+        }
+
         container.addView(row);
         return et;
     }
