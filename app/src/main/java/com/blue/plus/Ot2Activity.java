@@ -78,6 +78,11 @@ public class Ot2Activity extends Activity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         TvUtil.hideSystemUI(this);
         
+        android.content.SharedPreferences spCount = getSharedPreferences("Playlists", MODE_PRIVATE);
+        liveCount = spCount.getInt("cached_live_count", 0);
+        movieCount = spCount.getInt("cached_movie_count", 0);
+        seriesCount = spCount.getInt("cached_series_count", 0);
+
         requestNetwork = new RequestNetwork(this);
         new Thread(new Runnable() {
             @Override
@@ -186,7 +191,7 @@ public class Ot2Activity extends Activity {
                         outLive.write(",".getBytes());
                         downloadStream(dns + "/player_api.php?action=get_live_streams&username=" + user + "&password=" + pass, outLive, "get_live_streams");
                         outLive.write("}}".getBytes());
-                        outLive.flush(); outLive.getFD().sync(); outLive.close();
+                        outLive.flush(); outLive.close();
 
                         // 2. VOD / movies
                         java.io.FileOutputStream outVod = new java.io.FileOutputStream(fileVod);
@@ -199,7 +204,7 @@ public class Ot2Activity extends Activity {
                             downloadStream(dns + "/player_api.php?action=get_vod_streams&username=" + user + "&password=" + pass, outVod, "get_vod_streams");
                             outVod.write("}}".getBytes());
                         }
-                        outVod.flush(); outVod.getFD().sync(); outVod.close();
+                        outVod.flush(); outVod.close();
 
                         // 3. Series
                         java.io.FileOutputStream outSeries = new java.io.FileOutputStream(fileSeries);
@@ -212,7 +217,7 @@ public class Ot2Activity extends Activity {
                             downloadStream(dns + "/player_api.php?action=get_series&username=" + user + "&password=" + pass, outSeries, "get_series");
                             outSeries.write("}}".getBytes());
                         }
-                        outSeries.flush(); outSeries.getFD().sync(); outSeries.close();
+                        outSeries.flush(); outSeries.close();
 
                     } catch (Exception e) {
                         Log.e(TAG, "Refresh download failed: " + e.getMessage());
@@ -371,11 +376,17 @@ public class Ot2Activity extends Activity {
         java.net.URL url = new java.net.URL(urlStr);
         java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
         conn.setRequestProperty("User-Agent", USER_AGENT);
-        conn.setConnectTimeout(20000);
-        conn.setReadTimeout(20000);
+        conn.setRequestProperty("Accept-Encoding", "gzip, deflate");
+        conn.setConnectTimeout(15000);
+        conn.setReadTimeout(15000);
         conn.connect();
         if (conn.getResponseCode() == 200) {
-            java.io.InputStream is = new java.io.BufferedInputStream(conn.getInputStream(), 65536); // 64KB read buffer
+            java.io.InputStream rawInput = conn.getInputStream();
+            String encoding = conn.getContentEncoding();
+            if (encoding != null && "gzip".equalsIgnoreCase(encoding)) {
+                rawInput = new java.util.zip.GZIPInputStream(rawInput);
+            }
+            java.io.InputStream is = new java.io.BufferedInputStream(rawInput, 65536); // 64KB read buffer
             byte[] buffer = new byte[65536]; // 64KB chunks
             int count;
             while ((count = is.read(buffer)) != -1) {
@@ -475,6 +486,26 @@ public class Ot2Activity extends Activity {
             } catch (Exception e) {
                 Log.e(TAG, "Series parse error: " + e.getMessage());
             }
+        }
+
+        android.content.SharedPreferences spCount = getSharedPreferences("Playlists", MODE_PRIVATE);
+        int oldLive = spCount.getInt("cached_live_count", -1);
+        int oldMovie = spCount.getInt("cached_movie_count", -1);
+        int oldSeries = spCount.getInt("cached_series_count", -1);
+
+        spCount.edit()
+                .putInt("cached_live_count", liveCount)
+                .putInt("cached_movie_count", movieCount)
+                .putInt("cached_series_count", seriesCount)
+                .apply();
+
+        if (oldLive != -1 && (oldLive != liveCount || oldMovie != movieCount || oldSeries != seriesCount)) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    recreate();
+                }
+            });
         }
     }
 

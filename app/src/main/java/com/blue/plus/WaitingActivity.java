@@ -62,6 +62,26 @@ public class WaitingActivity extends Activity {
         code = getIntent().getStringExtra("code");
         onlyLive = getIntent().getBooleanExtra("only_live", false);
 
+        boolean forceRefresh = getIntent().getBooleanExtra("force_refresh", false);
+        android.content.SharedPreferences sp = getSharedPreferences("Playlists", MODE_PRIVATE);
+        java.io.File fileLive = new java.io.File(getExternalFilesDir(null), "xtream_live.json");
+
+        if (!forceRefresh && fileLive.exists() && fileLive.length() > 500
+                && dns.equals(sp.getString("last_cached_dns", ""))
+                && username.equals(sp.getString("last_cached_username", ""))) {
+            sp.edit().putString("active_dns", dns)
+                     .putString("active_username", username)
+                     .putString("active_password", password)
+                     .putString("active_code", code)
+                     .putBoolean("active_only_live", onlyLive)
+                     .apply();
+
+            Intent intent = new Intent(WaitingActivity.this, Ot2Activity.class);
+            startActivity(intent);
+            finish();
+            return;
+        }
+
         createUI();
         startDownload();
     }
@@ -420,7 +440,7 @@ public class WaitingActivity extends Activity {
                         outLive.write(",".getBytes());
                         downloadToStreamParallel(finalDnsP + "/player_api.php?action=get_live_streams&username=" + finalUserP + "&password=" + finalPassP, outLive, "get_live_streams", totalBytesAtom, totalContentLength);
                         outLive.write("}}".getBytes());
-                        outLive.flush(); outLive.getFD().sync(); outLive.close();
+                        outLive.flush(); outLive.close();
 
                         // ── Phase 2: VOD / أفلام ────────────────────────────────
                         FileOutputStream outVod = new FileOutputStream(fileVod);
@@ -433,7 +453,7 @@ public class WaitingActivity extends Activity {
                             downloadToStreamParallel(finalDnsP + "/player_api.php?action=get_vod_streams&username=" + finalUserP + "&password=" + finalPassP, outVod, "get_vod_streams", totalBytesAtom, totalContentLength);
                             outVod.write("}}".getBytes());
                         }
-                        outVod.flush(); outVod.getFD().sync(); outVod.close();
+                        outVod.flush(); outVod.close();
 
                         // ── Phase 3: Series / مسلسلات ──────────────────────────
                         FileOutputStream outSeries = new FileOutputStream(fileSeries);
@@ -446,7 +466,7 @@ public class WaitingActivity extends Activity {
                             downloadToStreamParallel(finalDnsP + "/player_api.php?action=get_series&username=" + finalUserP + "&password=" + finalPassP, outSeries, "get_series", totalBytesAtom, totalContentLength);
                             outSeries.write("}}".getBytes());
                         }
-                        outSeries.flush(); outSeries.getFD().sync(); outSeries.close();
+                        outSeries.flush(); outSeries.close();
 
                     } catch (Exception e) {
                         Log.e(TAG, "Sequential download failed: " + e.getMessage());
@@ -560,8 +580,9 @@ public class WaitingActivity extends Activity {
         URL url = new URL(urlStr);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestProperty("User-Agent", USER_AGENT);
-        connection.setConnectTimeout(20000);
-        connection.setReadTimeout(20000);
+        connection.setRequestProperty("Accept-Encoding", "gzip, deflate");
+        connection.setConnectTimeout(15000);
+        connection.setReadTimeout(15000);
         connection.connect();
 
         if (connection.getResponseCode() != 200) {
@@ -570,8 +591,13 @@ public class WaitingActivity extends Activity {
         }
 
         int contentLength = connection.getContentLength();
-        InputStream input = new java.io.BufferedInputStream(connection.getInputStream());
-        byte data[] = new byte[16384];
+        InputStream rawInput = connection.getInputStream();
+        String encoding = connection.getContentEncoding();
+        if (encoding != null && "gzip".equalsIgnoreCase(encoding)) {
+            rawInput = new java.util.zip.GZIPInputStream(rawInput);
+        }
+        InputStream input = new java.io.BufferedInputStream(rawInput);
+        byte data[] = new byte[32768];
         int count;
         int bytesRead = 0;
         
@@ -615,8 +641,9 @@ public class WaitingActivity extends Activity {
         java.net.URL url = new java.net.URL(urlStr);
         java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
         connection.setRequestProperty("User-Agent", USER_AGENT);
-        connection.setConnectTimeout(20000);
-        connection.setReadTimeout(20000);
+        connection.setRequestProperty("Accept-Encoding", "gzip, deflate");
+        connection.setConnectTimeout(15000);
+        connection.setReadTimeout(15000);
         connection.connect();
 
         if (connection.getResponseCode() != 200) {
@@ -628,7 +655,13 @@ public class WaitingActivity extends Activity {
             totalContentLength.addAndGet(length);
         }
 
-        InputStream input = new java.io.BufferedInputStream(connection.getInputStream(), 65536); // 64KB read buffer
+        InputStream rawInput = connection.getInputStream();
+        String encoding = connection.getContentEncoding();
+        if (encoding != null && "gzip".equalsIgnoreCase(encoding)) {
+            rawInput = new java.util.zip.GZIPInputStream(rawInput);
+        }
+
+        InputStream input = new java.io.BufferedInputStream(rawInput, 65536); // 64KB read buffer
         byte[] data = new byte[65536]; // 64KB data chunks
         int count;
         while ((count = input.read(data)) != -1) {
