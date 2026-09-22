@@ -21,8 +21,23 @@ android {
 		targetCompatibility JavaVersion.VERSION_17
 	}
 	
+	signingConfigs {
+		fixed {
+			storeFile file('blueplus.jks')
+			storePassword 'blueplus123'
+			keyAlias 'blueplus'
+			keyPassword 'blueplus123'
+			v1SigningEnabled true
+			v2SigningEnabled true
+		}
+	}
+	
 	buildTypes {
+		debug {
+			signingConfig signingConfigs.fixed
+		}
 		release {
+			signingConfig signingConfigs.fixed
 			minifyEnabled false
 			proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
 		}

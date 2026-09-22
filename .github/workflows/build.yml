@@ -26,6 +26,17 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Setup Permanent Fixed Keystore
+        run: |
+          if [ ! -f "app/blueplus.jks" ]; then
+            keytool -genkeypair -v -keystore app/blueplus.jks -alias blueplus -keyalg RSA -keysize 2048 -validity 10000 -storepass blueplus123 -keypass blueplus123 -dname "CN=BluePlus, OU=Media, O=Blue, L=Baghdad, ST=Baghdad, C=IQ"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add app/blueplus.jks
+            git commit -m "chore: save permanent fixed keystore [skip ci]" || true
+            git push origin main || true
+          fi
+
       - name: Build APK with Gradle
         run: ./gradlew assembleDebug --stacktrace
 
