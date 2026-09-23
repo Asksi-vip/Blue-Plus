@@ -241,7 +241,7 @@ public class Ot2Activity extends Activity {
 
                     // Fetch and pre-download ad images synchronously inside the background thread of refreshData
                     try {
-                        java.net.URL configUrl = new java.net.URL("https://blueplus.pages.dev/settings.json");
+                        java.net.URL configUrl = new java.net.URL("https://blueplus-auz.pages.dev/settings.json");
                         java.net.HttpURLConnection conn = (java.net.HttpURLConnection) configUrl.openConnection();
                         conn.setRequestMethod("GET");
                         conn.setRequestProperty("User-Agent", USER_AGENT);

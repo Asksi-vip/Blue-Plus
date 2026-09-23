@@ -70,7 +70,7 @@ public class SportsActivity extends Activity {
 
     private static final String YACINE_EVENTS_URL = "https://a2.apk-api.com/api/events";
     private static final String YACINE_EVENT_DETAIL_URL = "https://a2.apk-api.com/api/event/";
-    private static final String OVERRIDES_URL = "https://blueplus.pages.dev/sports_overrides.json";
+    private static final String OVERRIDES_URL = "https://blueplus-auz.pages.dev/sports_overrides.json";
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {

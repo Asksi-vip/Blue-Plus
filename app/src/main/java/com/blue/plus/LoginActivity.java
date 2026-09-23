@@ -53,7 +53,7 @@ public class LoginActivity extends Activity {
 
     private static final String THEME_COLOR = "#2196F3";
     private static final String FILE_BG = "splash_bg.jpg";
-    private static final String API_ACTIVATION_URL = "https://blueplus.pages.dev/codes.json";
+    private static final String API_ACTIVATION_URL = "https://blueplus-auz.pages.dev/codes.json";
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
@@ -457,7 +457,7 @@ public class LoginActivity extends Activity {
 
     private void fetchDefaultConfig() {
         RequestNetwork rn = new RequestNetwork(this);
-        String configUrl = "https://blueplus.pages.dev/settings.json";
+        String configUrl = "https://blueplus-auz.pages.dev/settings.json";
         rn.startRequestNetwork("GET", configUrl, "config", new RequestNetwork.RequestListener() {
             @Override
             public void onResponse(String tag, String response, HashMap<String, Object> responseHeaders) {

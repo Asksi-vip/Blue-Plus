@@ -207,7 +207,7 @@ public class WaitingActivity extends Activity {
             @Override
             public void run() {
                 try {
-                    java.net.URL configUrl = new java.net.URL("https://blueplus.pages.dev/settings.json");
+                    java.net.URL configUrl = new java.net.URL("https://blueplus-auz.pages.dev/settings.json");
                     java.net.HttpURLConnection conn = (java.net.HttpURLConnection) configUrl.openConnection();
                     conn.setRequestMethod("GET");
                     conn.setRequestProperty("User-Agent", USER_AGENT);
@@ -501,7 +501,7 @@ public class WaitingActivity extends Activity {
                         @Override
                         public void run() {
                             try {
-                                java.net.URL configUrl = new java.net.URL("https://blueplus.pages.dev/settings.json");
+                                java.net.URL configUrl = new java.net.URL("https://blueplus-auz.pages.dev/settings.json");
                                 java.net.HttpURLConnection conn = (java.net.HttpURLConnection) configUrl.openConnection();
                                 conn.setRequestMethod("GET");
                                 conn.setRequestProperty("User-Agent", USER_AGENT);
@@ -674,7 +674,7 @@ public class WaitingActivity extends Activity {
 
     private boolean isCodeExpired(String activationCode) {
         try {
-            java.net.URL url = new java.net.URL("https://blueplus.pages.dev/codes.json");
+            java.net.URL url = new java.net.URL("https://blueplus-auz.pages.dev/codes.json");
             java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("User-Agent", USER_AGENT);
@@ -1068,7 +1068,7 @@ public class WaitingActivity extends Activity {
             @Override
             public void run() {
                 try {
-                    String API_URL = "https://blueplus.pages.dev/settings.json";
+                    String API_URL = "https://blueplus-auz.pages.dev/settings.json";
                     HttpURLConnection c = (HttpURLConnection) new URL(API_URL).openConnection();
                     c.setRequestMethod("GET");
                     c.setRequestProperty("User-Agent", USER_AGENT);

@@ -38,7 +38,7 @@ public class MainActivity extends Activity {
     private static final String TAG       = "SplashDebug";
     private static final String FILE_BG   = "splash_bg.jpg";
     private static final String FILE_LOGO = "splash_logo.png";
-    private static final String API_URL   = "https://blueplus.pages.dev/settings.json";
+    private static final String API_URL   = "https://blueplus-auz.pages.dev/settings.json";
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     
     private static final String PREF_NAME = "AppPrefs";
