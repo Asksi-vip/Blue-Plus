@@ -38,18 +38,19 @@ jobs:
           fi
 
       - name: Build APK with Gradle
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleRelease --stacktrace
 
       - name: Find Built APK
         id: find_apk
         run: |
-          APK_FILE=$(find app/build/outputs/apk -name "*.apk" | head -n 1)
-          if [ -z "$APK_FILE" ]; then
+          APK_RAW=$(find app/build/outputs/apk -name "*.apk" | head -n 1)
+          if [ -z "$APK_RAW" ]; then
             echo "::error::No APK found in app/build/outputs/apk"
             exit 1
           fi
-          echo "Found APK: $APK_FILE"
-          echo "apk_path=$APK_FILE" >> $GITHUB_OUTPUT
+          cp "$APK_RAW" "app/build/outputs/apk/BluePlus-v1.3.apk"
+          echo "Found APK: app/build/outputs/apk/BluePlus-v1.3.apk"
+          echo "apk_path=app/build/outputs/apk/BluePlus-v1.3.apk" >> $GITHUB_OUTPUT
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
