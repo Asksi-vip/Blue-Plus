@@ -14,7 +14,7 @@ import androidx.media3.ui.PlayerView;
 import com.blue.plus.player.cache.MediaCacheManager;
 import com.blue.plus.player.watchdog.LiveWatchdog;
 
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi.class)
+@androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
 public class Media3PlayerEngine implements PlayerEngine {
     private ExoPlayer exoPlayer;
     private final Context context;
