@@ -10,6 +10,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -42,7 +44,7 @@ public class Ot2Activity extends Activity {
     private RequestNetwork requestNetwork;
     private TextView tickerTv;
 
-    private java.util.List<Bitmap> adBitmaps = new java.util.ArrayList<>();
+    private java.util.List<String> adUrls = new java.util.ArrayList<>();
     private int currentAdIndex = 0;
     private android.os.Handler adHandler = new android.os.Handler();
     private Runnable adRunnable;
@@ -309,42 +311,7 @@ public class Ot2Activity extends Activity {
                                  }
                              });
                              
-                             if (obj.has("ad_images")) {
-                                 org.json.JSONArray arr = obj.getJSONArray("ad_images");
-                                 java.io.File adsDir = new java.io.File(getFilesDir(), "ads");
-                                 if (!adsDir.exists()) adsDir.mkdirs();
-                                 int count = 0;
-                                 for (int j = 0; j < arr.length(); j++) {
-                                     String adUrlStr = arr.getString(j);
-                                     if (adUrlStr == null || adUrlStr.isEmpty()) continue;
-                                     if (!adUrlStr.startsWith("http")) adUrlStr = "http://" + adUrlStr;
-                                     try {
-                                         java.net.URL adUrl = new java.net.URL(adUrlStr);
-                                         java.net.HttpURLConnection adConn = (java.net.HttpURLConnection) adUrl.openConnection();
-                                         adConn.setRequestProperty("User-Agent", USER_AGENT);
-                                         adConn.setConnectTimeout(5000);
-                                         adConn.setReadTimeout(5000);
-                                         adConn.connect();
-                                         if (adConn.getResponseCode() == 200) {
-                                             java.io.InputStream adInput = adConn.getInputStream();
-                                             java.io.File adFile = new java.io.File(adsDir, "ad_" + j + ".png");
-                                             java.io.FileOutputStream adOutput = new java.io.FileOutputStream(adFile);
-                                             byte[] buffer = new byte[8192];
-                                             int bytesRead;
-                                             while ((bytesRead = adInput.read(buffer)) != -1) {
-                                                 adOutput.write(buffer, 0, bytesRead);
-                                             }
-                                             adOutput.flush();
-                                             adOutput.close();
-                                             adInput.close();
-                                             count++;
-                                         }
-                                     } catch (Exception ex) {
-                                         Log.e(TAG, "Failed downloading ad image: " + ex.getMessage());
-                                     }
-                                 }
-                                 getSharedPreferences("Playlists", MODE_PRIVATE).edit().putInt("cached_ads_count", count).apply();
-                             }
+                             // Ad images are now loaded dynamically via Glide
                         }
                     } catch (Exception e) {
                         Log.e(TAG, "Ad pre-download failed: " + e.getMessage());
@@ -827,40 +794,20 @@ public class Ot2Activity extends Activity {
     }
 
     private void loadLocalAds(final ImageView bannerImageView) {
-        adBitmaps.clear();
-        java.io.File adsDir = new java.io.File(getFilesDir(), "ads");
-        if (adsDir.exists() && adsDir.isDirectory()) {
-            java.io.File[] files = adsDir.listFiles();
-            if (files != null) {
-                java.util.Arrays.sort(files, new java.util.Comparator<java.io.File>() {
-                    @Override
-                    public int compare(java.io.File f1, java.io.File f2) {
-                        return f1.getName().compareTo(f2.getName());
-                    }
-                });
-                for (java.io.File f : files) {
-                    if (f.length() > 100) {
-                        Bitmap bmp = BitmapFactory.decodeFile(f.getAbsolutePath());
-                        if (bmp != null) {
-                            adBitmaps.add(bmp);
-                        }
-                    }
+        adUrls.clear();
+        String adsJson = getSharedPreferences("AppPrefs", MODE_PRIVATE).getString("ad_urls_json", "[]");
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray(adsJson);
+            for (int i = 0; i < arr.length(); i++) {
+                String url = arr.optString(i);
+                if (url != null && !url.isEmpty()) {
+                    adUrls.add(url);
                 }
             }
-        }
+        } catch (Exception e) {}
 
-        if (adBitmaps.isEmpty()) {
-            for (int i = 0; i < 10; i++) {
-                File adFile = new File(getFilesDir(), "ad_" + i + ".jpg");
-                if (adFile.exists() && adFile.length() > 100) {
-                    Bitmap bmp = BitmapFactory.decodeFile(adFile.getAbsolutePath());
-                    if (bmp != null) adBitmaps.add(bmp);
-                }
-            }
-        }
-
-        if (!adBitmaps.isEmpty()) {
-            bannerImageView.setImageBitmap(adBitmaps.get(0));
+        if (!adUrls.isEmpty()) {
+            Glide.with(this).load(adUrls.get(0)).diskCacheStrategy(DiskCacheStrategy.ALL).into(bannerImageView);
             startAdCarousel(bannerImageView);
         } else {
             int bannerRes = getResources().getIdentifier("tv_banner", "drawable", getPackageName());
@@ -875,9 +822,9 @@ public class Ot2Activity extends Activity {
         adRunnable = new Runnable() {
             @Override
             public void run() {
-                if (adBitmaps.size() > 1) {
-                    currentAdIndex = (currentAdIndex + 1) % adBitmaps.size();
-                    animateBanner(bannerImageView, adBitmaps.get(currentAdIndex));
+                if (adUrls.size() > 1) {
+                    currentAdIndex = (currentAdIndex + 1) % adUrls.size();
+                    animateBanner(bannerImageView, adUrls.get(currentAdIndex));
                 }
                 adHandler.postDelayed(this, 15000);
             }
@@ -885,7 +832,7 @@ public class Ot2Activity extends Activity {
         adHandler.postDelayed(adRunnable, 15000);
     }
 
-    private void animateBanner(final ImageView img, final Bitmap nextBmp) {
+    private void animateBanner(final ImageView img, final String nextUrl) {
         android.view.animation.AlphaAnimation fadeOut = new android.view.animation.AlphaAnimation(1.0f, 0.0f);
         fadeOut.setDuration(400);
         fadeOut.setAnimationListener(new android.view.animation.Animation.AnimationListener() {
@@ -895,10 +842,12 @@ public class Ot2Activity extends Activity {
             public void onAnimationRepeat(android.view.animation.Animation animation) {}
             @Override
             public void onAnimationEnd(android.view.animation.Animation animation) {
-                img.setImageBitmap(nextBmp);
-                android.view.animation.AlphaAnimation fadeIn = new android.view.animation.AlphaAnimation(0.0f, 1.0f);
-                fadeIn.setDuration(400);
-                img.startAnimation(fadeIn);
+                if (!isDestroyed()) {
+                    Glide.with(Ot2Activity.this).load(nextUrl).diskCacheStrategy(DiskCacheStrategy.ALL).into(img);
+                    android.view.animation.AlphaAnimation fadeIn = new android.view.animation.AlphaAnimation(0.0f, 1.0f);
+                    fadeIn.setDuration(400);
+                    img.startAnimation(fadeIn);
+                }
             }
         });
         img.startAnimation(fadeOut);

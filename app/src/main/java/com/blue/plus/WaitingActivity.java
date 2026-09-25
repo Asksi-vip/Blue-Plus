@@ -524,12 +524,10 @@ public class WaitingActivity extends Activity {
                                     
                                     // PRE-CACHE IMAGES SYSTEM (Background)
                                     final org.json.JSONArray adArr = obj.optJSONArray("ad_images");
-                                    new Thread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            preCacheImages(adArr);
-                                        }
-                                    }).start();
+                                    if (adArr != null) {
+                                        getSharedPreferences("AppPrefs", MODE_PRIVATE).edit().putString("ad_urls_json", adArr.toString()).apply();
+                                    }
+                                    // preCacheImages removed, handled dynamically by Glide
                                 }
                             } catch (Exception e) {
                                 Log.e(TAG, "Ad pre-download failed: " + e.getMessage());
