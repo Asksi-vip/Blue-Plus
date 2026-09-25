@@ -40,7 +40,7 @@ jobs:
       - name: Build APK with Gradle
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: Find Built APK
+      - name: Sign & Verify APK with apksigner
         id: find_apk
         run: |
           APK_RAW=$(find app/build/outputs/apk -name "*.apk" | head -n 1)
@@ -48,8 +48,22 @@ jobs:
             echo "::error::No APK found in app/build/outputs/apk"
             exit 1
           fi
-          cp "$APK_RAW" "app/build/outputs/apk/BluePlus-v1.3.apk"
-          echo "Found APK: app/build/outputs/apk/BluePlus-v1.3.apk"
+          
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name "apksigner" | sort -V | tail -n 1)
+          echo "Using apksigner: $APKSIGNER"
+          
+          "$APKSIGNER" sign --ks app/blueplus.jks \
+            --ks-key-alias blueplus \
+            --ks-pass pass:blueplus123 \
+            --key-pass pass:blueplus123 \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --out app/build/outputs/apk/BluePlus-v1.3.apk \
+            "$APK_RAW"
+            
+          "$APKSIGNER" verify --verbose app/build/outputs/apk/BluePlus-v1.3.apk
+          
           echo "apk_path=app/build/outputs/apk/BluePlus-v1.3.apk" >> $GITHUB_OUTPUT
 
       - name: Upload APK Artifact
