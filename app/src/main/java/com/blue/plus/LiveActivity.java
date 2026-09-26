@@ -113,7 +113,7 @@ public class LiveActivity extends Activity {
                     bufferingDurationSeconds++;
                     videoFrozenSeconds = 0;
                     lastRenderedFrames = -1;
-                    if (bufferingDurationSeconds >= 15) { // 15 seconds buffering watchdog (matching mytv-android)
+                    if (bufferingDurationSeconds >= 4) { // Fast 4 seconds buffering watchdog for live IPTV
                         bufferingDurationSeconds = 0;
                         android.util.Log.d("PlayerWatchdog", "Buffering watchdog fired, retrying...");
                         long currentPos = exoPlayer.getCurrentPosition();
@@ -126,7 +126,7 @@ public class LiveActivity extends Activity {
                         int currentRenderedFrames = counters.renderedOutputBufferCount;
                         if (lastRenderedFrames == currentRenderedFrames) {
                             videoFrozenSeconds++;
-                            if (videoFrozenSeconds >= 10) { // 10 seconds frozen watchdog
+                            if (videoFrozenSeconds >= 4) { // Fast 4 seconds frozen watchdog
                                 videoFrozenSeconds = 0;
                                 lastRenderedFrames = -1;
                                 android.util.Log.d("PlayerWatchdog", "Video freeze detected (stuck at " + currentRenderedFrames + " frames), retrying...");
@@ -2418,17 +2418,18 @@ public class LiveActivity extends Activity {
 
         com.google.android.exoplayer2.upstream.DefaultBandwidthMeter bandwidthMeter = 
             new com.google.android.exoplayer2.upstream.DefaultBandwidthMeter.Builder(this)
-                .setInitialBitrateEstimate(250000) // 250 kbps initial estimate
+                .setInitialBitrateEstimate(3000000) // 3.0 Mbps initial estimate for immediate HD playback
                 .build();
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                15000, // minBufferMs: 15s buffer (ExoPlayer default minimum)
-                50000, // maxBufferMs: 50s max buffer size (ExoPlayer default maximum)
-                2500,  // bufferForPlaybackMs: starts playing after 2.5s of data to prevent instant stuttering
-                5000   // bufferForPlaybackAfterRebufferMs: recovers smoothly with 5s of data after a drop
+                3000,  // minBufferMs: 3s buffer (ultra-fast start and prevents un-broadcast chunk waiting)
+                10000, // maxBufferMs: 10s max buffer (prevents memory exhaustion on TV boxes)
+                800,   // bufferForPlaybackMs: starts playing after 0.8s!
+                1200   // bufferForPlaybackAfterRebufferMs: recovers instantly (1.2s) after network glitch
             )
             .setPrioritizeTimeOverSizeThresholds(true)
+            .setBackBuffer(2000, false)
             .build();
 
         com.google.android.exoplayer2.mediacodec.MediaCodecSelector customMediaCodecSelector = new com.google.android.exoplayer2.mediacodec.MediaCodecSelector() {

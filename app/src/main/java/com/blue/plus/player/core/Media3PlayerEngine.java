@@ -48,8 +48,14 @@ public class Media3PlayerEngine implements PlayerEngine {
                 .setUpstreamDataSourceFactory(httpDataSourceFactory)
                 .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
 
+        androidx.media3.exoplayer.DefaultLoadControl loadControl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                .setBufferDurationsMs(3000, 10000, 800, 1200)
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .build();
+
         exoPlayer = new ExoPlayer.Builder(context)
                 .setMediaSourceFactory(new DefaultMediaSourceFactory(cacheDataSourceFactory))
+                .setLoadControl(loadControl)
                 .build();
 
         ((PlayerView) playerView).setPlayer(exoPlayer);

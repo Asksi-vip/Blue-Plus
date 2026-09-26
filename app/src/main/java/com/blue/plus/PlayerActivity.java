@@ -1582,17 +1582,18 @@ public class PlayerActivity extends Activity {
         try {
             com.google.android.exoplayer2.upstream.DefaultBandwidthMeter bandwidthMeter = 
                 new com.google.android.exoplayer2.upstream.DefaultBandwidthMeter.Builder(this)
-                    .setInitialBitrateEstimate(250000) // 250 kbps initial estimate
+                    .setInitialBitrateEstimate(4000000) // 4.0 Mbps initial estimate for VOD movies
                     .build();
 
             DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                    30000, // minBufferMs: 30s buffer to survive network drops
-                    60000, // maxBufferMs: 60s max buffer size
-                    3000,  // bufferForPlaybackMs: starts playing after 3s of data to prevent instant stuttering
-                    5000   // bufferForPlaybackAfterRebufferMs: recovers smoothly with 5s of data after a drop
+                    8000,  // minBufferMs: 8s buffer
+                    25000, // maxBufferMs: 25s max buffer
+                    1000,  // bufferForPlaybackMs: starts playing after 1.0s
+                    1500   // bufferForPlaybackAfterRebufferMs: recovers in 1.5s
                 )
                 .setPrioritizeTimeOverSizeThresholds(true)
+                .setBackBuffer(5000, true) // retain 5s back buffer for instant backward seeking
                 .build();
 
             com.google.android.exoplayer2.mediacodec.MediaCodecSelector customMediaCodecSelector = new com.google.android.exoplayer2.mediacodec.MediaCodecSelector() {
