@@ -881,8 +881,8 @@ public class TvUtil {
                 return isAr ? "جاري التحقق من الكود..." : "Verifying code...";
             case "جاري التحقق من وجود تحديثات على السيرفر وتحديث الخلفية والشعار...":
                 return isAr ? "جاري التحقق من وجود تحديثات على السيرفر وتحديث الخلفية والشعار..." : "Checking for server updates and updating background/logo...";
-            case "تطبيقك محدث بالكامل إلى الإصدار v4.3 بنجاح! تم استيراد أحدث الإعدادات والخلفية.":
-                return isAr ? "تطبيقك محدث بالكامل إلى الإصدار v4.3 بنجاح! تم استيراد أحدث الإعدادات والخلفية." : "Your app is successfully updated to version v4.3! Latest settings and background have been imported.";
+            case "تطبيقك محدث بالكامل بنجاح! أنت على أحدث إصدار.":
+                return isAr ? "تطبيقك محدث بالكامل بنجاح! أنت على أحدث إصدار." : "Your app is up to date with the latest version!";
             case "زيارة":
                 return isAr ? "زيارة" : "Visit";
             case "متابعة المشاهدة":

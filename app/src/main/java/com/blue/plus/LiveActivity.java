@@ -3650,6 +3650,10 @@ public class LiveActivity extends Activity {
     }
 
     private void autoPlayLastChannel() {
+        android.content.SharedPreferences spSettings = getSharedPreferences("Settings", MODE_PRIVATE);
+        boolean autoPlay = spSettings.getBoolean("auto_play_live", true);
+        if (!autoPlay) return;
+
         android.content.SharedPreferences sp = getSharedPreferences("LivePrefs", MODE_PRIVATE);
         String lastChanName = sp.getString("last_channel_name", "");
         String lastCatName = sp.getString("last_category_name", "");

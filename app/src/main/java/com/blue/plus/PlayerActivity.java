@@ -323,6 +323,16 @@ public class PlayerActivity extends Activity {
         playerView.setBackgroundColor(Color.BLACK);
         playerView.setKeepContentOnPlayerReset(true); // smooth switching
         playerView.setUseArtwork(false);
+        try {
+            if (playerView.getSubtitleView() != null) {
+                android.content.SharedPreferences spSettings = getSharedPreferences("Settings", MODE_PRIVATE);
+                String subSize = spSettings.getString("subtitle_size", "medium");
+                float sizeSp = 18f;
+                if ("small".equals(subSize)) sizeSp = 14f;
+                else if ("large".equals(subSize)) sizeSp = 24f;
+                playerView.getSubtitleView().setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, sizeSp);
+            }
+        } catch (Exception ignored) {}
         root.addView(playerView);
 
         final float scale = getResources().getDisplayMetrics().density;

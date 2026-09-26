@@ -23,6 +23,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -33,22 +34,29 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.NetworkInterface;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class SettingsActivity extends Activity {
 
     private FrameLayout rootLayout;
     private static final String TAG = "SettingsActivity";
-    private final String THEME_BLUE_DARK = "#E60B2240"; // Premium Translucent Deep Blue
-    private final String THEME_BLUE_LIGHT = "#E61976D2"; // Premium Translucent Royal Blue
-    private final String STROKE_BLUE = "#802196F3"; // Vibrant Blue Border
-    private final String ICON_COLOR = "#4FC3F7"; // Electric Cyan for icons
+
+    // Apple iOS Liquid Glass UI Theme Constants
+    private final String THEME_CARD_TOP = "#E60B101C";
+    private final String THEME_CARD_BOTTOM = "#E60D1526";
+    private final String STROKE_BLUE = "#2680B4FF";
+    private final String ACCENT_BLUE = "#0A84FF";
+    private final String ACCENT_CYAN = "#40C4FF";
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
@@ -60,7 +68,7 @@ public class SettingsActivity extends Activity {
         super.onCreate(savedInstanceState);
         try {
             setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        } catch (Exception e) {}
+        } catch (Exception ignored) {}
         getWindow().setFlags(
                 WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN
@@ -71,10 +79,10 @@ public class SettingsActivity extends Activity {
         rootLayout.setLayoutParams(new FrameLayout.LayoutParams(-1, -1));
         rootLayout.setBackgroundResource(R.drawable.bg_sports);
 
-        // Dark elegant overlay
+        // Deep Atmospheric Midnight Canvas Overlay (#7305070B)
         View overlay = new View(this);
         overlay.setLayoutParams(new FrameLayout.LayoutParams(-1, -1));
-        overlay.setBackgroundColor(Color.parseColor("#55000000"));
+        overlay.setBackgroundColor(Color.parseColor("#7305070B"));
         rootLayout.addView(overlay);
 
         buildUI();
@@ -88,29 +96,29 @@ public class SettingsActivity extends Activity {
         LinearLayout mainLayout = new LinearLayout(this);
         mainLayout.setOrientation(LinearLayout.VERTICAL);
         mainLayout.setLayoutParams(new FrameLayout.LayoutParams(-1, -1));
-        mainLayout.setPadding((int) (24 * scale), (int) (16 * scale), (int) (24 * scale), (int) (16 * scale));
+        mainLayout.setPadding((int) (24 * scale), (int) (14 * scale), (int) (24 * scale), (int) (14 * scale));
 
-        // Top Header
+        // ── Top Header ──
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
-        headerLp.bottomMargin = (int) (12 * scale);
+        headerLp.bottomMargin = (int) (10 * scale);
         header.setLayoutParams(headerLp);
 
-        // Back Arrow
+        // Frosted Circular Back Button (Apple Liquid Glass)
         LinearLayout btnBack = new LinearLayout(this);
         btnBack.setGravity(Gravity.CENTER);
         btnBack.setClickable(true);
         btnBack.setFocusable(true);
-        LinearLayout.LayoutParams backLp = new LinearLayout.LayoutParams((int) (40 * scale), (int) (40 * scale));
+        LinearLayout.LayoutParams backLp = new LinearLayout.LayoutParams((int) (38 * scale), (int) (38 * scale));
         btnBack.setLayoutParams(backLp);
         GradientDrawable backBg = new GradientDrawable();
         backBg.setShape(GradientDrawable.OVAL);
-        backBg.setColor(Color.parseColor("#22FFFFFF"));
-        backBg.setStroke((int) (1.5 * scale), Color.parseColor("#55FFFFFF"));
+        backBg.setColor(Color.parseColor("#E60B101C"));
+        backBg.setStroke((int) (1.2f * scale), Color.parseColor(STROKE_BLUE));
         btnBack.setBackground(backBg);
-        TvUtil.applyTvFocusHighlight(btnBack, 20.0f);
+        TvUtil.applyTvFocusHighlight(btnBack, 19.0f);
 
         ImageView ivBack = new ImageView(this);
         android.graphics.drawable.Drawable backIcon = getResources().getDrawable(android.R.drawable.ic_menu_revert);
@@ -118,7 +126,7 @@ public class SettingsActivity extends Activity {
             backIcon.setColorFilter(Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN);
             ivBack.setImageDrawable(backIcon);
         }
-        btnBack.addView(ivBack, new LinearLayout.LayoutParams((int) (22 * scale), (int) (22 * scale)));
+        btnBack.addView(ivBack, new LinearLayout.LayoutParams((int) (20 * scale), (int) (20 * scale)));
         btnBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -127,122 +135,158 @@ public class SettingsActivity extends Activity {
         });
         header.addView(btnBack);
 
-        // Title
+        // Title and Subtitle Container
+        LinearLayout titleCol = new LinearLayout(this);
+        titleCol.setOrientation(LinearLayout.VERTICAL);
+        titleCol.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
+        titleCol.setLayoutParams(titleLp);
+
         TextView tvTitle = new TextView(this);
         tvTitle.setText(TvUtil.translate(this, "الإعدادات"));
         tvTitle.setTextColor(Color.WHITE);
-        tvTitle.setTextSize(20);
+        tvTitle.setTextSize(19);
         tvTitle.setTypeface(null, Typeface.BOLD);
         tvTitle.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, -2, 1);
-        titleLp.rightMargin = (int) (40 * scale); // Balance back button offset
-        tvTitle.setLayoutParams(titleLp);
-        header.addView(tvTitle);
+        titleCol.addView(tvTitle);
+
+        TextView tvSubtitle = new TextView(this);
+        tvSubtitle.setText(TvUtil.translate(this, "تخصيص المشغل والبث والحسابات"));
+        tvSubtitle.setTextColor(Color.parseColor("#8A99AD"));
+        tvSubtitle.setTextSize(10.5f);
+        tvSubtitle.setGravity(Gravity.CENTER);
+        titleCol.addView(tvSubtitle);
+
+        header.addView(titleCol);
+
+        // Header Right: Version Pill
+        LinearLayout versionPill = new LinearLayout(this);
+        versionPill.setOrientation(LinearLayout.HORIZONTAL);
+        versionPill.setGravity(Gravity.CENTER);
+        versionPill.setPadding((int) (12 * scale), (int) (6 * scale), (int) (12 * scale), (int) (6 * scale));
+        GradientDrawable pillBg = new GradientDrawable();
+        pillBg.setColor(Color.parseColor("#140A84FF"));
+        pillBg.setCornerRadius(12 * scale);
+        pillBg.setStroke((int) (1 * scale), Color.parseColor("#3380B4FF"));
+        versionPill.setBackground(pillBg);
+
+        String verName = "v1.3";
+        try {
+            verName = "v" + getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception ignored) {}
+
+        TextView tvPill = new TextView(this);
+        tvPill.setText("Blue+ Pro " + verName);
+        tvPill.setTextColor(Color.parseColor(ACCENT_CYAN));
+        tvPill.setTextSize(11);
+        tvPill.setTypeface(null, Typeface.BOLD);
+        versionPill.addView(tvPill);
+        header.addView(versionPill);
 
         mainLayout.addView(header);
 
-        // Settings ScrollView
+        // ── Settings ScrollView & Grid ──
         ScrollView scrollView = new ScrollView(this);
-        scrollView.setLayoutParams(new LinearLayout.LayoutParams(-1, 0, 1));
+        scrollView.setLayoutParams(new LinearLayout.LayoutParams(-1, 0, 1.0f));
         scrollView.setVerticalScrollBarEnabled(false);
 
         LinearLayout gridContainer = new LinearLayout(this);
         gridContainer.setOrientation(LinearLayout.VERTICAL);
         gridContainer.setLayoutParams(new ScrollView.LayoutParams(-1, -2));
 
-        // Settings items (exactly 20 items forming 5 perfect rows)
+        // Read real-time SharedPreferences values for dynamic subtitles
+        SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
+        boolean useExternal = sp.getBoolean("use_external", false);
+        String streamFormat = sp.getString("stream_format", "auto");
+        boolean autoPlayLive = sp.getBoolean("auto_play_live", true);
+        String subtitleSize = sp.getString("subtitle_size", "medium");
+        String timeFormat = sp.getString("time_format", "12");
+        int deviceMode = sp.getInt("device_mode", 0);
+        String appLang = sp.getString("app_language", "auto");
+        boolean parentalActive = sp.getBoolean("parental_active", false);
+
+        String subSizeLabel = "متوسط";
+        if ("small".equals(subtitleSize)) subSizeLabel = "صغير";
+        else if ("large".equals(subtitleSize)) subSizeLabel = "كبير";
+
+        String langLabel = "تلقائي";
+        if ("ar".equals(appLang)) langLabel = "العربية";
+        else if ("en".equals(appLang)) langLabel = "English";
+
+        // Settings items: Exactly 20 items forming 5 balanced rows of 4
         ArrayList<SettingItem> items = new ArrayList<>();
-        
-        // Row 1
-        items.add(new SettingItem("أضف قائمة التشغيل", R.drawable.ic_settings_playlist, new View.OnClickListener() {
+
+        // ── Row 1: Playlists & Player Setup ──
+        items.add(new SettingItem("أضف قائمة التشغيل", "Xtream / M3U", R.drawable.ic_settings_playlist, new View.OnClickListener() {
             @Override public void onClick(View v) { addPlaylistAction(); }
         }));
-        items.add(new SettingItem("مراقبة اهلية", R.drawable.ic_settings_lock, new View.OnClickListener() {
-            @Override public void onClick(View v) { parentalControlAction(); }
-        }));
-        items.add(new SettingItem("تغيير قائمة التسجيل", R.drawable.ic_settings_playlist, new View.OnClickListener() {
+        items.add(new SettingItem("تغيير قائمة التشغيل", "التبديل بين القوائم", R.drawable.ic_settings_playlist, new View.OnClickListener() {
             @Override public void onClick(View v) { changePlaylistAction(); }
         }));
-        items.add(new SettingItem("إخفاء الفئات الحية", R.drawable.ic_settings_eye_off, new View.OnClickListener() {
-            @Override public void onClick(View v) { hideCategoriesAction("live"); }
+        items.add(new SettingItem("اختيار المشغل الافتراضي", useExternal ? "مشغل خارجي" : "المشغل المدمج", R.drawable.ic_settings_player, new View.OnClickListener() {
+            @Override public void onClick(View v) { changePlayerAction(); }
         }));
-
-        // Row 2
-        items.add(new SettingItem("إخفاء الفئات Vod", R.drawable.ic_settings_eye_off, new View.OnClickListener() {
-            @Override public void onClick(View v) { hideCategoriesAction("vod"); }
-        }));
-        items.add(new SettingItem("إخفاء فئات المسلسلات", R.drawable.ic_settings_eye_off, new View.OnClickListener() {
-            @Override public void onClick(View v) { hideCategoriesAction("series"); }
-        }));
-        items.add(new SettingItem("Clear History Channels", R.drawable.ic_settings_delete, new View.OnClickListener() {
-            @Override public void onClick(View v) { clearHistoryAction("live"); }
-        }));
-        items.add(new SettingItem("أفلام التاريخ واضحة", R.drawable.ic_settings_delete, new View.OnClickListener() {
-            @Override public void onClick(View v) { clearHistoryAction("movies"); }
-        }));
-
-        // Row 3
-        items.add(new SettingItem("سلسلة مسح التاريخ", R.drawable.ic_settings_delete, new View.OnClickListener() {
-            @Override public void onClick(View v) { clearHistoryAction("series"); }
-        }));
-        items.add(new SettingItem("Live Stream Format", R.drawable.ic_settings_movie, new View.OnClickListener() {
+        items.add(new SettingItem("تنسيق البث المباشر", "الصيغة: " + streamFormat.toUpperCase(), R.drawable.ic_settings_movie, new View.OnClickListener() {
             @Override public void onClick(View v) { liveStreamFormatAction(); }
         }));
-        items.add(new SettingItem("تلقائي", R.drawable.ic_settings_sync, new View.OnClickListener() {
-            @Override public void onClick(View v) { autoStartAction(); }
+
+        // ── Row 2: Category Management ──
+        items.add(new SettingItem("إخفاء باقات القنوات", "فلترة باقات Live", R.drawable.ic_settings_eye_off, new View.OnClickListener() {
+            @Override public void onClick(View v) { hideCategoriesAction("live"); }
         }));
-        items.add(new SettingItem("تنسيق الوقت", R.drawable.ic_settings_clock, new View.OnClickListener() {
-            @Override public void onClick(View v) { timeFormatAction(); }
+        items.add(new SettingItem("إخفاء باقات الأفلام", "فلترة باقات VOD", R.drawable.ic_settings_eye_off, new View.OnClickListener() {
+            @Override public void onClick(View v) { hideCategoriesAction("vod"); }
+        }));
+        items.add(new SettingItem("إخفاء باقات المسلسلات", "فلترة باقات Series", R.drawable.ic_settings_eye_off, new View.OnClickListener() {
+            @Override public void onClick(View v) { hideCategoriesAction("series"); }
+        }));
+        items.add(new SettingItem("رمز المراقبة الأبوية", "تعيين أو تغيير الرمز", R.drawable.ic_settings_lock, new View.OnClickListener() {
+            @Override public void onClick(View v) { parentalControlAction(); }
         }));
 
-        // Row 4
-        items.add(new SettingItem("إعدادات الترجمة", R.drawable.ic_settings_subtitle, new View.OnClickListener() {
-            @Override public void onClick(View v) { subtitleSettingsAction(); }
+        // ── Row 3: History & Security Controls ──
+        items.add(new SettingItem("مسح سجل القنوات", "تفريغ ذاكرة المشاهدة", R.drawable.ic_settings_delete, new View.OnClickListener() {
+            @Override public void onClick(View v) { clearHistoryAction("live"); }
         }));
-        items.add(new SettingItem("Select Device Type", R.drawable.ic_settings_device, new View.OnClickListener() {
-            @Override public void onClick(View v) { selectDeviceTypeAction(); }
+        items.add(new SettingItem("مسح سجل الأفلام", "مسح المشاهدات السابقة", R.drawable.ic_settings_delete, new View.OnClickListener() {
+            @Override public void onClick(View v) { clearHistoryAction("movies"); }
         }));
-        items.add(new SettingItem("تحديث الآن", R.drawable.ic_settings_update, new View.OnClickListener() {
-            @Override public void onClick(View v) { updateNowAction(); }
+        items.add(new SettingItem("مسح سجل المسلسلات", "مسح الحلقات المشاهدة", R.drawable.ic_settings_delete, new View.OnClickListener() {
+            @Override public void onClick(View v) { clearHistoryAction("series"); }
         }));
-        items.add(new SettingItem("Parental Control ON/OFF", R.drawable.ic_settings_lock, new View.OnClickListener() {
+        items.add(new SettingItem("قفل المراقبة الأبوية", parentalActive ? "الحماية مفعلة" : "الحماية معطلة", R.drawable.ic_settings_lock, new View.OnClickListener() {
             @Override public void onClick(View v) { parentalToggleAction(); }
         }));
 
-        // Row 5 (Additional Premium Items + Language option)
-        items.add(new SettingItem("App Language", R.drawable.ic_settings_sync, new View.OnClickListener() {
+        // ── Row 4: Playback Preferences ──
+        items.add(new SettingItem("التشغيل التلقائي للبث", autoPlayLive ? "تشغيل فوري عند الفتح" : "يدوي عند الاختيار", R.drawable.ic_settings_sync, new View.OnClickListener() {
+            @Override public void onClick(View v) { autoStartAction(); }
+        }));
+        items.add(new SettingItem("إعدادات الترجمة", "حجم الخط: " + subSizeLabel, R.drawable.ic_settings_subtitle, new View.OnClickListener() {
+            @Override public void onClick(View v) { subtitleSettingsAction(); }
+        }));
+        items.add(new SettingItem("تنسيق الوقت", timeFormat + " ساعة", R.drawable.ic_settings_clock, new View.OnClickListener() {
+            @Override public void onClick(View v) { timeFormatAction(); }
+        }));
+        items.add(new SettingItem("نمط الجهاز", deviceMode == 1 ? "Android TV" : "الهاتف المحمول", R.drawable.ic_settings_device, new View.OnClickListener() {
+            @Override public void onClick(View v) { selectDeviceTypeAction(); }
+        }));
+
+        // ── Row 5: System & Application Info ──
+        items.add(new SettingItem("لغة التطبيق", langLabel, R.drawable.ic_settings_language, new View.OnClickListener() {
             @Override public void onClick(View v) { appLanguageAction(); }
         }));
-        items.add(new SettingItem("اتصل بنا", R.drawable.ic_settings_update, new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setData(android.net.Uri.parse("https://t.me/Match_sportss"));
-                    startActivity(intent);
-                } catch (Exception e) {
-                    Toast.makeText(SettingsActivity.this, "فشل فتح الرابط!", Toast.LENGTH_SHORT).show();
-                }
-            }
+        items.add(new SettingItem("التحقق من التحديثات", "فحص السيرفر السحابي", R.drawable.ic_settings_update, new View.OnClickListener() {
+            @Override public void onClick(View v) { updateNowAction(); }
         }));
-        items.add(new SettingItem("حول التطبيق", R.drawable.ic_settings_device, new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                View textContainer = new LinearLayout(SettingsActivity.this);
-                ((LinearLayout)textContainer).setOrientation(LinearLayout.VERTICAL);
-                ((LinearLayout)textContainer).setPadding(30, 30, 30, 30);
-                TextView tv = new TextView(SettingsActivity.this);
-                tv.setText("Blue + IPTV Player\nVersion: 4.3\nPremium TV & VOD Experience");
-                tv.setTextColor(Color.WHITE);
-                tv.setTextSize(14);
-                tv.setGravity(Gravity.CENTER);
-                ((LinearLayout)textContainer).addView(tv);
-                showPremiumDialog("حول التطبيق", textContainer, "موافق", null, null, null);
-            }
+        items.add(new SettingItem("حول التطبيق والدعم", "Blue+ Pro " + verName, R.drawable.ic_settings_white, new View.OnClickListener() {
+            @Override public void onClick(View v) { showAboutDialog(); }
         }));
-        items.add(new SettingItem("خروج", R.drawable.ic_settings_delete, new View.OnClickListener() {
+        items.add(new SettingItem("خروج من الإعدادات", "العودة للشاشة الرئيسية", R.drawable.ic_settings_delete, new View.OnClickListener() {
             @Override public void onClick(View v) { finish(); }
         }));
 
-        // Construct rows programmatically (Exactly 5 rows of 4 items)
+        // Construct 5 rows of 4 cards
         LinearLayout currentRow = null;
         View firstSettingCard = null;
         for (int i = 0; i < items.size(); i++) {
@@ -250,59 +294,75 @@ public class SettingsActivity extends Activity {
                 currentRow = new LinearLayout(this);
                 currentRow.setOrientation(LinearLayout.HORIZONTAL);
                 LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, -2);
-                rowLp.topMargin = (int) (6 * scale);
-                rowLp.bottomMargin = (int) (6 * scale);
+                rowLp.topMargin = (int) (5 * scale);
+                rowLp.bottomMargin = (int) (5 * scale);
                 currentRow.setLayoutParams(rowLp);
                 gridContainer.addView(currentRow);
             }
 
             View card = createSettingCard(items.get(i), scale);
-            LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(0, (int) (48 * scale), 1.0f);
-            cardLp.leftMargin = (int) (6 * scale);
-            cardLp.rightMargin = (int) (6 * scale);
+            LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(0, (int) (54 * scale), 1.0f);
+            cardLp.leftMargin = (int) (5 * scale);
+            cardLp.rightMargin = (int) (5 * scale);
             card.setLayoutParams(cardLp);
-            
-            TvUtil.applyTvFocusHighlight(card);
-            
+
+            TvUtil.applyTvFocusHighlight(card, 14.0f);
+
             if (i == 0) {
                 firstSettingCard = card;
             }
-            
+
             if (currentRow != null) {
                 currentRow.addView(card);
             }
         }
 
-        // Footer Device Info
-        LinearLayout footer = new LinearLayout(this);
-        footer.setOrientation(LinearLayout.VERTICAL);
-        footer.setGravity(Gravity.CENTER);
+        // ── Footer Device Info Capsule ──
+        LinearLayout footerContainer = new LinearLayout(this);
+        footerContainer.setOrientation(LinearLayout.HORIZONTAL);
+        footerContainer.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams footerLp = new LinearLayout.LayoutParams(-1, -2);
-        footerLp.topMargin = (int) (20 * scale);
-        footerLp.bottomMargin = (int) (10 * scale);
-        footer.setLayoutParams(footerLp);
+        footerLp.topMargin = (int) (16 * scale);
+        footerLp.bottomMargin = (int) (8 * scale);
+        footerContainer.setLayoutParams(footerLp);
+
+        LinearLayout footerPill = new LinearLayout(this);
+        footerPill.setOrientation(LinearLayout.HORIZONTAL);
+        footerPill.setGravity(Gravity.CENTER_VERTICAL);
+        footerPill.setPadding((int) (20 * scale), (int) (8 * scale), (int) (20 * scale), (int) (8 * scale));
+        GradientDrawable footerBg = new GradientDrawable();
+        footerBg.setColor(Color.parseColor("#B30B101C"));
+        footerBg.setCornerRadius(14 * scale);
+        footerBg.setStroke((int) (1.2f * scale), Color.parseColor(STROKE_BLUE));
+        footerPill.setBackground(footerBg);
 
         TextView tvMac = new TextView(this);
-        tvMac.setText(TvUtil.translate(this, "MAC Address") + ": " + getMacAddress().toLowerCase());
-        tvMac.setTextColor(Color.parseColor("#B0BEC5"));
-        tvMac.setTextSize(13);
+        tvMac.setText("MAC: " + getMacAddress().toLowerCase());
+        tvMac.setTextColor(Color.parseColor("#8A99AD"));
+        tvMac.setTextSize(12);
         tvMac.setTypeface(null, Typeface.BOLD);
-        tvMac.setGravity(Gravity.CENTER);
-        footer.addView(tvMac);
+        footerPill.addView(tvMac);
+
+        View separator = new View(this);
+        separator.setBackgroundColor(Color.parseColor("#3380B4FF"));
+        LinearLayout.LayoutParams sepLp = new LinearLayout.LayoutParams((int) (1 * scale), (int) (14 * scale));
+        sepLp.leftMargin = (int) (16 * scale);
+        sepLp.rightMargin = (int) (16 * scale);
+        separator.setLayoutParams(sepLp);
+        footerPill.addView(separator);
 
         TextView tvDeviceKey = new TextView(this);
-        tvDeviceKey.setText(TvUtil.translate(this, "Device Key") + ": " + getDeviceKey());
-        tvDeviceKey.setTextColor(Color.parseColor("#B0BEC5"));
-        tvDeviceKey.setTextSize(13);
+        tvDeviceKey.setText("Device Key: " + getDeviceKey());
+        tvDeviceKey.setTextColor(Color.parseColor("#8A99AD"));
+        tvDeviceKey.setTextSize(12);
         tvDeviceKey.setTypeface(null, Typeface.BOLD);
-        tvDeviceKey.setGravity(Gravity.CENTER);
-        tvDeviceKey.setPadding(0, (int) (4 * scale), 0, 0);
-        footer.addView(tvDeviceKey);
+        footerPill.addView(tvDeviceKey);
 
-        gridContainer.addView(footer);
+        footerContainer.addView(footerPill);
+        gridContainer.addView(footerContainer);
+
         scrollView.addView(gridContainer);
         mainLayout.addView(scrollView);
-
         rootLayout.addView(mainLayout);
 
         if (firstSettingCard != null) {
@@ -320,87 +380,127 @@ public class SettingsActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding((int) (12 * scale), 0, (int) (12 * scale), 0);
+        card.setPadding((int) (10 * scale), 0, (int) (12 * scale), 0);
         card.setClickable(true);
         card.setFocusable(true);
 
-        // Premium Translucent Blue Gradient Background
+        // Apple Liquid Glass card background
         GradientDrawable gd = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{Color.parseColor(THEME_BLUE_DARK), Color.parseColor(THEME_BLUE_LIGHT)}
+                new int[]{Color.parseColor(THEME_CARD_TOP), Color.parseColor(THEME_CARD_BOTTOM)}
         );
-        gd.setCornerRadius(12 * scale);
-        gd.setStroke((int) (1.5 * scale), Color.parseColor(STROKE_BLUE));
+        gd.setCornerRadius(14 * scale);
+        gd.setStroke((int) (1.2f * scale), Color.parseColor(STROKE_BLUE));
         card.setBackground(gd);
 
-        // Icon
+        // Icon circular badge
+        FrameLayout iconBadge = new FrameLayout(this);
+        LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams((int) (34 * scale), (int) (34 * scale));
+        badgeLp.rightMargin = (int) (10 * scale);
+        iconBadge.setLayoutParams(badgeLp);
+
+        GradientDrawable badgeBg = new GradientDrawable();
+        badgeBg.setShape(GradientDrawable.OVAL);
+        badgeBg.setColor(Color.parseColor("#140A84FF"));
+        badgeBg.setStroke((int) (1 * scale), Color.parseColor("#2680B4FF"));
+        iconBadge.setBackground(badgeBg);
+
         ImageView ivIcon = new ImageView(this);
         android.graphics.drawable.Drawable drawable = getResources().getDrawable(item.iconRes);
         if (drawable != null) {
-            drawable.setColorFilter(Color.parseColor(ICON_COLOR), android.graphics.PorterDuff.Mode.SRC_IN);
+            drawable.setColorFilter(Color.parseColor(ACCENT_BLUE), android.graphics.PorterDuff.Mode.SRC_IN);
             ivIcon.setImageDrawable(drawable);
         }
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams((int) (20 * scale), (int) (20 * scale));
-        iconLp.rightMargin = (int) (10 * scale);
+        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams((int) (18 * scale), (int) (18 * scale));
+        iconLp.gravity = Gravity.CENTER;
         ivIcon.setLayoutParams(iconLp);
-        card.addView(ivIcon);
+        iconBadge.addView(ivIcon);
+        card.addView(iconBadge);
 
-        // Title text
-        TextView tvText = new TextView(this);
-        tvText.setText(TvUtil.translate(this, item.title));
-        tvText.setTextColor(Color.WHITE);
-        tvText.setTextSize(11);
-        tvText.setTypeface(null, Typeface.BOLD);
+        // Texts column (Title + Subtitle)
+        LinearLayout textCol = new LinearLayout(this);
+        textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams colLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
+        textCol.setLayoutParams(colLp);
+
+        TextView tvTitle = new TextView(this);
+        tvTitle.setText(TvUtil.translate(this, item.title));
+        tvTitle.setTextColor(Color.WHITE);
+        tvTitle.setTextSize(11.5f);
+        tvTitle.setTypeface(null, Typeface.BOLD);
+        tvTitle.setSingleLine(true);
+        tvTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        textCol.addView(tvTitle);
+
+        if (item.subtitle != null && !item.subtitle.isEmpty()) {
+            TextView tvSub = new TextView(this);
+            tvSub.setText(TvUtil.translate(this, item.subtitle));
+            tvSub.setTextColor(Color.parseColor("#8A99AD"));
+            tvSub.setTextSize(9.5f);
+            tvSub.setSingleLine(true);
+            tvSub.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            tvSub.setPadding(0, (int) (1.5f * scale), 0, 0);
+            textCol.addView(tvSub);
+        }
+        card.addView(textCol);
+
+        // Subtle indicator arrow
+        TextView tvArrow = new TextView(this);
         boolean isAr = "ar".equals(TvUtil.getAppLanguage(this));
-        tvText.setGravity((isAr ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
-        tvText.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
-        card.addView(tvText);
+        tvArrow.setText(isAr ? "‹" : "›");
+        tvArrow.setTextColor(Color.parseColor("#33FFFFFF"));
+        tvArrow.setTextSize(14);
+        tvArrow.setGravity(Gravity.CENTER);
+        tvArrow.setPadding((int) (4 * scale), 0, (int) (2 * scale), 0);
+        card.addView(tvArrow);
 
         card.setOnClickListener(item.listener);
         return card;
     }
 
-    // --- Premium Glassmorphic Dialog Helper ---
+    // ── Apple iOS Liquid Glass Dialog Helper ──
 
     private void showPremiumDialog(String title, View contentView, String positiveText, final Runnable positiveAction, String negativeText, final Runnable negativeAction) {
         final Dialog dialog = new Dialog(this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        
+
         float scale = getResources().getDisplayMetrics().density;
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding((int)(20 * scale), (int)(16 * scale), (int)(20 * scale), (int)(16 * scale));
-        
+        container.setPadding((int) (22 * scale), (int) (18 * scale), (int) (22 * scale), (int) (18 * scale));
+
+        // Frosted midnight glass gradient with subtle blue glow
         GradientDrawable gd = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{Color.parseColor(THEME_BLUE_DARK), Color.parseColor(THEME_BLUE_LIGHT)}
+                new int[]{Color.parseColor("#F20B101C"), Color.parseColor("#F20D1526")}
         );
-        gd.setCornerRadius(16 * scale);
-        gd.setStroke((int)(2 * scale), Color.parseColor(STROKE_BLUE));
+        gd.setCornerRadius(20 * scale);
+        gd.setStroke((int) (1.5f * scale), Color.parseColor("#400A84FF"));
         container.setBackground(gd);
-        
+
         TextView tvTitle = new TextView(this);
         tvTitle.setText(TvUtil.translate(this, title));
-        tvTitle.setTextColor(Color.parseColor(ICON_COLOR));
+        tvTitle.setTextColor(Color.parseColor(ACCENT_CYAN));
         tvTitle.setTextSize(16);
         tvTitle.setTypeface(null, Typeface.BOLD);
         tvTitle.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(-1, -2);
-        titleLp.bottomMargin = (int)(12 * scale);
+        titleLp.bottomMargin = (int) (14 * scale);
         tvTitle.setLayoutParams(titleLp);
         container.addView(tvTitle);
-        
+
         if (contentView != null) {
             LinearLayout.LayoutParams contentLp = new LinearLayout.LayoutParams(-1, -2);
-            contentLp.bottomMargin = (int)(16 * scale);
+            contentLp.bottomMargin = (int) (18 * scale);
             contentView.setLayoutParams(contentLp);
             container.addView(contentView);
         }
-        
+
         LinearLayout buttonsRow = new LinearLayout(this);
         buttonsRow.setOrientation(LinearLayout.HORIZONTAL);
         buttonsRow.setGravity(Gravity.CENTER);
-        
+
         if (positiveText != null) {
             TextView btnPos = new TextView(this);
             btnPos.setText(TvUtil.translate(this, positiveText));
@@ -408,19 +508,19 @@ public class SettingsActivity extends Activity {
             btnPos.setTextSize(13);
             btnPos.setTypeface(null, Typeface.BOLD);
             btnPos.setGravity(Gravity.CENTER);
-            btnPos.setPadding((int)(16 * scale), (int)(8 * scale), (int)(16 * scale), (int)(8 * scale));
+            btnPos.setPadding((int) (16 * scale), (int) (9 * scale), (int) (16 * scale), (int) (9 * scale));
             btnPos.setFocusable(true);
             btnPos.setClickable(true);
-            
+
             GradientDrawable posBg = new GradientDrawable();
-            posBg.setColor(Color.parseColor("#4D2196F3"));
-            posBg.setCornerRadius(8 * scale);
-            posBg.setStroke((int)(1.5 * scale), Color.parseColor("#802196F3"));
+            posBg.setColor(Color.parseColor("#E60A84FF"));
+            posBg.setCornerRadius(12 * scale);
+            posBg.setStroke((int) (1.2f * scale), Color.parseColor("#40C4FF"));
             btnPos.setBackground(posBg);
-            TvUtil.applyTvFocusHighlight(btnPos, 8.0f);
-            
+            TvUtil.applyTvFocusHighlight(btnPos, 12.0f);
+
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1.0f);
-            lp.rightMargin = (int)(8 * scale);
+            lp.rightMargin = (int) (6 * scale);
             btnPos.setLayoutParams(lp);
             btnPos.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -431,7 +531,7 @@ public class SettingsActivity extends Activity {
             });
             buttonsRow.addView(btnPos);
         }
-        
+
         if (negativeText != null) {
             TextView btnNeg = new TextView(this);
             btnNeg.setText(TvUtil.translate(this, negativeText));
@@ -439,19 +539,19 @@ public class SettingsActivity extends Activity {
             btnNeg.setTextSize(13);
             btnNeg.setTypeface(null, Typeface.BOLD);
             btnNeg.setGravity(Gravity.CENTER);
-            btnNeg.setPadding((int)(16 * scale), (int)(8 * scale), (int)(16 * scale), (int)(8 * scale));
+            btnNeg.setPadding((int) (16 * scale), (int) (9 * scale), (int) (16 * scale), (int) (9 * scale));
             btnNeg.setFocusable(true);
             btnNeg.setClickable(true);
-            
+
             GradientDrawable negBg = new GradientDrawable();
             negBg.setColor(Color.parseColor("#1AFFFFFF"));
-            negBg.setCornerRadius(8 * scale);
-            negBg.setStroke((int)(1.5 * scale), Color.parseColor("#33FFFFFF"));
+            negBg.setCornerRadius(12 * scale);
+            negBg.setStroke((int) (1.2f * scale), Color.parseColor("#26FFFFFF"));
             btnNeg.setBackground(negBg);
-            TvUtil.applyTvFocusHighlight(btnNeg, 8.0f);
-            
+            TvUtil.applyTvFocusHighlight(btnNeg, 12.0f);
+
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1.0f);
-            lp.leftMargin = (int)(8 * scale);
+            lp.leftMargin = (int) (6 * scale);
             btnNeg.setLayoutParams(lp);
             btnNeg.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -462,13 +562,15 @@ public class SettingsActivity extends Activity {
             });
             buttonsRow.addView(btnNeg);
         }
-        
+
         container.addView(buttonsRow);
         dialog.setContentView(container);
-        
+
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout((int)(400 * scale), -2);
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            int dialogWidth = Math.min((int) (420 * scale), (int) (screenWidth * 0.85f));
+            dialog.getWindow().setLayout(dialogWidth, -2);
         }
         dialog.show();
     }
@@ -476,13 +578,14 @@ public class SettingsActivity extends Activity {
     private TextView createMessageTextView(String message) {
         TextView tv = new TextView(this);
         tv.setText(message);
-        tv.setTextColor(Color.WHITE);
+        tv.setTextColor(Color.parseColor("#CFD8DC"));
         tv.setTextSize(13);
         tv.setGravity(Gravity.CENTER);
+        tv.setLineSpacing(0, 1.25f);
         return tv;
     }
 
-    // --- Dynamic Function Actions ---
+    // ── Button Actions ──
 
     private void addPlaylistAction() {
         startActivity(new Intent(this, LoginActivity.class));
@@ -505,40 +608,40 @@ public class SettingsActivity extends Activity {
         float scale = getResources().getDisplayMetrics().density;
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
-        
+
         TextView label = new TextView(this);
-        label.setText("أدخل رمز المراقبة الأبوية الحالي لتأكيد العملية:");
+        label.setText(TvUtil.translate(this, "أدخل رمز المراقبة الأبوية الحالي لتأكيد العملية:"));
         label.setTextColor(Color.WHITE);
         label.setTextSize(13);
-        label.setPadding(0, 0, 0, (int)(8 * scale));
+        label.setPadding(0, 0, 0, (int) (8 * scale));
         container.addView(label);
-        
+
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-        input.setHint("الرمز الحالي");
+        input.setHint(TvUtil.translate(this, "الرمز الحالي"));
         input.setHintTextColor(Color.parseColor("#88FFFFFF"));
         input.setTextColor(Color.WHITE);
         input.setTextSize(14);
         input.setGravity(Gravity.CENTER);
-        
+
         GradientDrawable inputBg = new GradientDrawable();
         inputBg.setColor(Color.parseColor("#1AFFFFFF"));
         inputBg.setCornerRadius(8 * scale);
-        inputBg.setStroke((int)(1 * scale), Color.parseColor("#33FFFFFF"));
+        inputBg.setStroke((int) (1 * scale), Color.parseColor("#33FFFFFF"));
         input.setBackground(inputBg);
-        input.setPadding((int)(12 * scale), (int)(8 * scale), (int)(12 * scale), (int)(8 * scale));
+        input.setPadding((int) (12 * scale), (int) (8 * scale), (int) (12 * scale), (int) (8 * scale));
         container.addView(input);
 
-        showPremiumDialog(title, container, "تأكيد", new Runnable() {
+        showPremiumDialog(title, container, TvUtil.translate(this, "تأكيد"), new Runnable() {
             @Override
             public void run() {
                 if (input.getText().toString().equals(pin)) {
                     if (successAction != null) successAction.run();
                 } else {
-                    Toast.makeText(SettingsActivity.this, "الرمز السري غير صحيح!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "الرمز السري غير صحيح!"), Toast.LENGTH_SHORT).show();
                 }
             }
-        }, "إلغاء", null);
+        }, TvUtil.translate(this, "إلغاء"), null);
     }
 
     private void parentalControlAction() {
@@ -552,117 +655,118 @@ public class SettingsActivity extends Activity {
         final EditText etCurrentPin;
         if (!pin.isEmpty()) {
             TextView labelCurrent = new TextView(this);
-            labelCurrent.setText("الرمز السري الحالي:");
+            labelCurrent.setText(TvUtil.translate(this, "الرمز السري الحالي:"));
             labelCurrent.setTextColor(Color.WHITE);
             labelCurrent.setTextSize(13);
-            labelCurrent.setPadding(0, 0, 0, (int)(4 * scale));
+            labelCurrent.setPadding(0, 0, 0, (int) (4 * scale));
             container.addView(labelCurrent);
 
             etCurrentPin = new EditText(this);
             etCurrentPin.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-            etCurrentPin.setHint("الرمز الحالي");
+            etCurrentPin.setHint(TvUtil.translate(this, "الرمز الحالي"));
             etCurrentPin.setHintTextColor(Color.parseColor("#88FFFFFF"));
             etCurrentPin.setTextColor(Color.WHITE);
             etCurrentPin.setTextSize(14);
             etCurrentPin.setGravity(Gravity.CENTER);
-            
+
             GradientDrawable currentBg = new GradientDrawable();
             currentBg.setColor(Color.parseColor("#1AFFFFFF"));
             currentBg.setCornerRadius(8 * scale);
-            currentBg.setStroke((int)(1 * scale), Color.parseColor("#33FFFFFF"));
+            currentBg.setStroke((int) (1 * scale), Color.parseColor("#33FFFFFF"));
             etCurrentPin.setBackground(currentBg);
-            etCurrentPin.setPadding((int)(12 * scale), (int)(8 * scale), (int)(12 * scale), (int)(8 * scale));
+            etCurrentPin.setPadding((int) (12 * scale), (int) (8 * scale), (int) (12 * scale), (int) (8 * scale));
             container.addView(etCurrentPin);
-            
+
             View space = new View(this);
-            space.setLayoutParams(new LinearLayout.LayoutParams(-1, (int)(8 * scale)));
+            space.setLayoutParams(new LinearLayout.LayoutParams(-1, (int) (8 * scale)));
             container.addView(space);
         } else {
             etCurrentPin = null;
         }
 
         TextView labelNew = new TextView(this);
-        labelNew.setText("الرمز السري الجديد (4 أرقام):");
+        labelNew.setText(TvUtil.translate(this, "الرمز السري الجديد (4 أرقام):"));
         labelNew.setTextColor(Color.WHITE);
         labelNew.setTextSize(13);
-        labelNew.setPadding(0, 0, 0, (int)(4 * scale));
+        labelNew.setPadding(0, 0, 0, (int) (4 * scale));
         container.addView(labelNew);
 
         final EditText etNewPin = new EditText(this);
         etNewPin.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-        etNewPin.setHint("الرمز الجديد");
+        etNewPin.setHint(TvUtil.translate(this, "الرمز الجديد"));
         etNewPin.setHintTextColor(Color.parseColor("#88FFFFFF"));
         etNewPin.setTextColor(Color.WHITE);
         etNewPin.setTextSize(14);
         etNewPin.setGravity(Gravity.CENTER);
-        
+
         GradientDrawable newBg = new GradientDrawable();
         newBg.setColor(Color.parseColor("#1AFFFFFF"));
         newBg.setCornerRadius(8 * scale);
-        newBg.setStroke((int)(1 * scale), Color.parseColor("#33FFFFFF"));
+        newBg.setStroke((int) (1 * scale), Color.parseColor("#33FFFFFF"));
         etNewPin.setBackground(newBg);
-        etNewPin.setPadding((int)(12 * scale), (int)(8 * scale), (int)(12 * scale), (int)(8 * scale));
+        etNewPin.setPadding((int) (12 * scale), (int) (8 * scale), (int) (12 * scale), (int) (8 * scale));
         container.addView(etNewPin);
 
         View space2 = new View(this);
-        space2.setLayoutParams(new LinearLayout.LayoutParams(-1, (int)(8 * scale)));
+        space2.setLayoutParams(new LinearLayout.LayoutParams(-1, (int) (8 * scale)));
         container.addView(space2);
 
         TextView labelConfirm = new TextView(this);
-        labelConfirm.setText("تأكيد الرمز السري الجديد:");
+        labelConfirm.setText(TvUtil.translate(this, "تأكيد الرمز السري الجديد:"));
         labelConfirm.setTextColor(Color.WHITE);
         labelConfirm.setTextSize(13);
-        labelConfirm.setPadding(0, 0, 0, (int)(4 * scale));
+        labelConfirm.setPadding(0, 0, 0, (int) (4 * scale));
         container.addView(labelConfirm);
 
         final EditText etConfirmPin = new EditText(this);
         etConfirmPin.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-        etConfirmPin.setHint("تأكيد الرمز");
+        etConfirmPin.setHint(TvUtil.translate(this, "تأكيد الرمز"));
         etConfirmPin.setHintTextColor(Color.parseColor("#88FFFFFF"));
         etConfirmPin.setTextColor(Color.WHITE);
         etConfirmPin.setTextSize(14);
         etConfirmPin.setGravity(Gravity.CENTER);
-        
+
         GradientDrawable confirmBg = new GradientDrawable();
         confirmBg.setColor(Color.parseColor("#1AFFFFFF"));
         confirmBg.setCornerRadius(8 * scale);
-        confirmBg.setStroke((int)(1 * scale), Color.parseColor("#33FFFFFF"));
+        confirmBg.setStroke((int) (1 * scale), Color.parseColor("#33FFFFFF"));
         etConfirmPin.setBackground(confirmBg);
-        etConfirmPin.setPadding((int)(12 * scale), (int)(8 * scale), (int)(12 * scale), (int)(8 * scale));
+        etConfirmPin.setPadding((int) (12 * scale), (int) (8 * scale), (int) (12 * scale), (int) (8 * scale));
         container.addView(etConfirmPin);
 
-        showPremiumDialog("مراقبة أبوية", container, "حفظ", new Runnable() {
+        showPremiumDialog(TvUtil.translate(this, "مراقبة أبوية"), container, TvUtil.translate(this, "حفظ"), new Runnable() {
             @Override
             public void run() {
                 if (etCurrentPin != null) {
                     String currentInput = etCurrentPin.getText().toString();
                     if (!currentInput.equals(pin)) {
-                        Toast.makeText(SettingsActivity.this, "الرمز السري الحالي غير صحيح!", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "الرمز السري الحالي غير صحيح!"), Toast.LENGTH_SHORT).show();
                         return;
                     }
                 }
-                
+
                 String newPin = etNewPin.getText().toString();
                 String confirmPin = etConfirmPin.getText().toString();
-                
+
                 if (newPin.length() != 4) {
-                    Toast.makeText(SettingsActivity.this, "الرمز السري الجديد يجب أن يتكون من 4 أرقام!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "الرمز السري الجديد يجب أن يتكون من 4 أرقام!"), Toast.LENGTH_SHORT).show();
                     return;
                 }
-                
+
                 if (!newPin.equals(confirmPin)) {
-                    Toast.makeText(SettingsActivity.this, "رمز التأكيد غير متطابق مع الرمز الجديد!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "رمز التأكيد غير متطابق مع الرمز الجديد!"), Toast.LENGTH_SHORT).show();
                     return;
                 }
-                
+
                 sp.edit()
-                    .putString("parental_pin", newPin)
-                    .putBoolean("parental_active", true)
-                    .apply();
-                
-                Toast.makeText(SettingsActivity.this, "تم تعيين وتفعيل رمز المراقبة الأبوية بنجاح!", Toast.LENGTH_SHORT).show();
+                        .putString("parental_pin", newPin)
+                        .putBoolean("parental_active", true)
+                        .apply();
+
+                Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم تعيين وتفعيل رمز المراقبة الأبوية بنجاح!"), Toast.LENGTH_SHORT).show();
+                recreate();
             }
-        }, "إلغاء", null);
+        }, TvUtil.translate(this, "إلغاء"), null);
     }
 
     private void parentalToggleAction() {
@@ -670,7 +774,7 @@ public class SettingsActivity extends Activity {
         final String pin = sp.getString("parental_pin", "");
 
         if (pin.isEmpty()) {
-            Toast.makeText(this, "يرجى تعيين رمز مراقبة أبوية أولاً لتفعيل الخدمة!", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, TvUtil.translate(this, "يرجى تعيين رمز مراقبة أبوية أولاً لتفعيل الخدمة!"), Toast.LENGTH_LONG).show();
             parentalControlAction();
             return;
         }
@@ -681,15 +785,275 @@ public class SettingsActivity extends Activity {
             @Override
             public void run() {
                 sp.edit().putBoolean("parental_active", !active).apply();
-                Toast.makeText(SettingsActivity.this, !active ? "تم تفعيل المراقبة الأبوية!" : "تم إلغاء تفعيل المراقبة الأبوية!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(SettingsActivity.this, !active ? TvUtil.translate(SettingsActivity.this, "تم تفعيل المراقبة الأبوية!") : TvUtil.translate(SettingsActivity.this, "تم إلغاء تفعيل المراقبة الأبوية!"), Toast.LENGTH_SHORT).show();
+                recreate();
             }
         });
     }
+
+    private void changePlayerAction() {
+        final String[] items = {
+                TvUtil.translate(this, "المشغل المدمج الأساسي Blue + Player (تلقائي)"),
+                TvUtil.translate(this, "المشغل الخارجي لجميع صيغ البث (VLC / MX Player)")
+        };
+        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
+        boolean current = sp.getBoolean("use_external", false);
+
+        float scale = getResources().getDisplayMetrics().density;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+
+        final RadioGroup rg = new RadioGroup(this);
+        for (int i = 0; i < items.length; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setText(items[i]);
+            rb.setTextColor(Color.WHITE);
+            rb.setTextSize(13);
+            rb.setId(i);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ACCENT_BLUE)));
+            }
+            if ((i == 0 && !current) || (i == 1 && current)) rb.setChecked(true);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.bottomMargin = (int) (8 * scale);
+            rg.addView(rb, lp);
+        }
+        container.addView(rg);
+
+        showPremiumDialog(TvUtil.translate(this, "اختيار المشغل الافتراضي"), container, TvUtil.translate(this, "تطبيق المشغل"), new Runnable() {
+            @Override
+            public void run() {
+                int selectedId = rg.getCheckedRadioButtonId();
+                sp.edit().putBoolean("use_external", selectedId == 1).apply();
+                Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم ضبط المشغل الافتراضي بنجاح!"), Toast.LENGTH_SHORT).show();
+                recreate();
+            }
+        }, TvUtil.translate(this, "إلغاء"), null);
+    }
+
+    private void liveStreamFormatAction() {
+        final String[] items = {
+                TvUtil.translate(this, "تلقائي (مستحسن)"),
+                TvUtil.translate(this, "MPEG-TS (.ts)"),
+                TvUtil.translate(this, "HLS (.m3u8)")
+        };
+        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
+        String current = sp.getString("stream_format", "auto");
+
+        float scale = getResources().getDisplayMetrics().density;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+
+        final RadioGroup rg = new RadioGroup(this);
+        for (int i = 0; i < items.length; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setText(items[i]);
+            rb.setTextColor(Color.WHITE);
+            rb.setTextSize(13);
+            rb.setId(i);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ACCENT_BLUE)));
+            }
+            if ((i == 0 && current.equals("auto")) || (i == 1 && current.equals("ts")) || (i == 2 && current.equals("m3u8"))) {
+                rb.setChecked(true);
+            }
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.bottomMargin = (int) (8 * scale);
+            rg.addView(rb, lp);
+        }
+        container.addView(rg);
+
+        showPremiumDialog(TvUtil.translate(this, "تنسيق البث المباشر"), container, TvUtil.translate(this, "حفظ وتطبيق"), new Runnable() {
+            @Override
+            public void run() {
+                int selectedId = rg.getCheckedRadioButtonId();
+                String val = "auto";
+                String name = "تلقائي";
+                if (selectedId == 1) {
+                    val = "ts";
+                    name = "MPEG-TS";
+                } else if (selectedId == 2) {
+                    val = "m3u8";
+                    name = "m3u8";
+                }
+                sp.edit().putString("stream_format", val).apply();
+                Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم تعيين تنسيق البث بنجاح إلى: ") + name, Toast.LENGTH_SHORT).show();
+                recreate();
+            }
+        }, TvUtil.translate(this, "إلغاء"), null);
+    }
+
+    private void autoStartAction() {
+        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
+        boolean current = sp.getBoolean("auto_play_live", true);
+        final String[] items = {
+                TvUtil.translate(this, "تشغيل فوري للقناة عند الدخول للبث (افتراضي)"),
+                TvUtil.translate(this, "عدم تشغيل البث تلقائياً (يدوياً عند الاختيار)")
+        };
+
+        float scale = getResources().getDisplayMetrics().density;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+
+        final RadioGroup rg = new RadioGroup(this);
+        for (int i = 0; i < items.length; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setText(items[i]);
+            rb.setTextColor(Color.WHITE);
+            rb.setTextSize(13);
+            rb.setId(i);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ACCENT_BLUE)));
+            }
+            if ((i == 0 && current) || (i == 1 && !current)) rb.setChecked(true);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.bottomMargin = (int) (8 * scale);
+            rg.addView(rb, lp);
+        }
+        container.addView(rg);
+
+        showPremiumDialog(TvUtil.translate(this, "التشغيل التلقائي للبث"), container, TvUtil.translate(this, "حفظ"), new Runnable() {
+            @Override
+            public void run() {
+                int selectedId = rg.getCheckedRadioButtonId();
+                sp.edit().putBoolean("auto_play_live", selectedId == 0).apply();
+                Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم حفظ إعدادات التشغيل التلقائي بنجاح!"), Toast.LENGTH_SHORT).show();
+                recreate();
+            }
+        }, TvUtil.translate(this, "إلغاء"), null);
+    }
+
+    private void subtitleSettingsAction() {
+        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
+        String current = sp.getString("subtitle_size", "medium");
+        final String[] sizes = {
+                TvUtil.translate(this, "حجم خط صغير (14sp)"),
+                TvUtil.translate(this, "حجم خط متوسط (18sp - موصى به)"),
+                TvUtil.translate(this, "حجم خط كبير جداً (24sp)")
+        };
+        final String[] keys = {"small", "medium", "large"};
+
+        float scale = getResources().getDisplayMetrics().density;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+
+        final RadioGroup rg = new RadioGroup(this);
+        for (int i = 0; i < sizes.length; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setText(sizes[i]);
+            rb.setTextColor(Color.WHITE);
+            rb.setTextSize(13);
+            rb.setId(i);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ACCENT_BLUE)));
+            }
+            if (keys[i].equals(current)) rb.setChecked(true);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.bottomMargin = (int) (8 * scale);
+            rg.addView(rb, lp);
+        }
+        container.addView(rg);
+
+        showPremiumDialog(TvUtil.translate(this, "إعدادات الترجمة"), container, TvUtil.translate(this, "حفظ"), new Runnable() {
+            @Override
+            public void run() {
+                int selectedId = rg.getCheckedRadioButtonId();
+                if (selectedId >= 0 && selectedId < keys.length) {
+                    sp.edit().putString("subtitle_size", keys[selectedId]).apply();
+                    Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم حفظ إعدادات وحجم خط الترجمة بنجاح!"), Toast.LENGTH_SHORT).show();
+                    recreate();
+                }
+            }
+        }, TvUtil.translate(this, "إلغاء"), null);
+    }
+
+    private void timeFormatAction() {
+        final String[] items = {
+                TvUtil.translate(this, "تنسيق 12 ساعة (ص/م)"),
+                TvUtil.translate(this, "تنسيق 24 ساعة")
+        };
+        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
+        String current = sp.getString("time_format", "12");
+        int activeId = current.equals("24") ? 1 : 0;
+
+        float scale = getResources().getDisplayMetrics().density;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+
+        final RadioGroup rg = new RadioGroup(this);
+        for (int i = 0; i < items.length; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setText(items[i]);
+            rb.setTextColor(Color.WHITE);
+            rb.setTextSize(13);
+            rb.setId(i);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ACCENT_BLUE)));
+            }
+            if (i == activeId) rb.setChecked(true);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.bottomMargin = (int) (8 * scale);
+            rg.addView(rb, lp);
+        }
+        container.addView(rg);
+
+        showPremiumDialog(TvUtil.translate(this, "تنسيق الوقت"), container, TvUtil.translate(this, "حفظ"), new Runnable() {
+            @Override
+            public void run() {
+                int selectedId = rg.getCheckedRadioButtonId();
+                String val = (selectedId == 1) ? "24" : "12";
+                sp.edit().putString("time_format", val).apply();
+                Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم تحديث نمط عرض الوقت بنجاح!"), Toast.LENGTH_SHORT).show();
+                recreate();
+            }
+        }, TvUtil.translate(this, "إلغاء"), null);
+    }
+
+    private void selectDeviceTypeAction() {
+        final String[] items = {
+                TvUtil.translate(this, "الهاتف المحمول / تابلت (Mobile Mode)"),
+                TvUtil.translate(this, "شاشات وأجهزة تلفاز (Android TV Mode)")
+        };
+        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
+        int current = sp.getInt("device_mode", 0);
+
+        float scale = getResources().getDisplayMetrics().density;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+
+        final RadioGroup rg = new RadioGroup(this);
+        for (int i = 0; i < items.length; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setText(items[i]);
+            rb.setTextColor(Color.WHITE);
+            rb.setTextSize(13);
+            rb.setId(i);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ACCENT_BLUE)));
+            }
+            if (i == current) rb.setChecked(true);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.bottomMargin = (int) (8 * scale);
+            rg.addView(rb, lp);
+        }
+        container.addView(rg);
+
+        showPremiumDialog(TvUtil.translate(this, "نمط الجهاز"), container, TvUtil.translate(this, "تأكيد الحفظ"), new Runnable() {
+            @Override
+            public void run() {
+                int selectedId = rg.getCheckedRadioButtonId();
+                sp.edit().putInt("device_mode", selectedId).apply();
+                Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم ضبط إعدادات توافق الشاشات بنجاح!"), Toast.LENGTH_SHORT).show();
+                recreate();
+            }
+        }, TvUtil.translate(this, "إلغاء"), null);
+    }
+
     private void appLanguageAction() {
         final String[] items = {
-            TvUtil.translate(this, "Auto Detect"),
-            TvUtil.translate(this, "Arabic"),
-            TvUtil.translate(this, "English")
+                TvUtil.translate(this, "Auto Detect"),
+                TvUtil.translate(this, "Arabic"),
+                TvUtil.translate(this, "English")
         };
         final String[] values = {"auto", "ar", "en"};
         final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
@@ -701,11 +1065,11 @@ public class SettingsActivity extends Activity {
                 break;
             }
         }
-        
+
         float scale = getResources().getDisplayMetrics().density;
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
-        
+
         final RadioGroup rg = new RadioGroup(this);
         for (int i = 0; i < items.length; i++) {
             RadioButton rb = new RadioButton(this);
@@ -714,26 +1078,26 @@ public class SettingsActivity extends Activity {
             rb.setTextSize(13);
             rb.setId(i);
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ICON_COLOR)));
+                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ACCENT_BLUE)));
             }
             if (i == currentIdx) rb.setChecked(true);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-            lp.bottomMargin = (int)(6 * scale);
+            lp.bottomMargin = (int) (8 * scale);
             rg.addView(rb, lp);
         }
         container.addView(rg);
 
-        showPremiumDialog(TvUtil.translate(this, "App Language"), container, TvUtil.translate(this, "Save Settings"), new Runnable() {
+        showPremiumDialog(TvUtil.translate(this, "لغة التطبيق"), container, TvUtil.translate(this, "حفظ"), new Runnable() {
             @Override
             public void run() {
-                 int selectedId = rg.getCheckedRadioButtonId();
-                 if (selectedId >= 0 && selectedId < values.length) {
-                     sp.edit().putString("app_language", values[selectedId]).apply();
-                     Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "Save Settings") + "...", Toast.LENGTH_SHORT).show();
-                     recreate();
-                 }
-             }
-         }, TvUtil.translate(this, "إلغاء"), null);
+                int selectedId = rg.getCheckedRadioButtonId();
+                if (selectedId >= 0 && selectedId < values.length) {
+                    sp.edit().putString("app_language", values[selectedId]).apply();
+                    Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم حفظ لغة التطبيق..."), Toast.LENGTH_SHORT).show();
+                    recreate();
+                }
+            }
+        }, TvUtil.translate(this, "إلغاء"), null);
     }
 
     private void hideCategoriesAction(final String type) {
@@ -742,7 +1106,7 @@ public class SettingsActivity extends Activity {
         String pin = sp.getString("parental_pin", "");
 
         if (active && !pin.isEmpty()) {
-            verifyPinThenAction("تأكيد الرمز السري", new Runnable() {
+            verifyPinThenAction(TvUtil.translate(this, "تأكيد الرمز السري"), new Runnable() {
                 @Override
                 public void run() {
                     showHideCategoriesDialog(type);
@@ -756,7 +1120,7 @@ public class SettingsActivity extends Activity {
     private void showHideCategoriesDialog(final String type) {
         final List<String> cats = getLoadedCategories(type);
         if (cats.isEmpty()) {
-            showPremiumDialog("إخفاء الفئات", createMessageTextView("لا توجد فئات محملة حالياً. يرجى تصفح القنوات أولاً لتنشيط البيانات!"), "موافق", null, null, null);
+            showPremiumDialog(TvUtil.translate(this, "إخفاء باقات المحتوى"), createMessageTextView(TvUtil.translate(this, "لا توجد فئات محملة حالياً. يرجى تصفح القنوات أولاً لتنشيط البيانات!")), TvUtil.translate(this, "موافق"), null, null, null);
             return;
         }
 
@@ -764,135 +1128,136 @@ public class SettingsActivity extends Activity {
         final String prefPrefix = type.equals("live") ? "hide_live_cat_" : (type.equals("vod") ? "hide_movies_cat_" : "hide_series_cat_");
 
         float scale = getResources().getDisplayMetrics().density;
-        
-        // Root container for content
+
         LinearLayout contentLayout = new LinearLayout(this);
         contentLayout.setOrientation(LinearLayout.VERTICAL);
-        
-        // Explanatory label
+
         TextView tvIntro = new TextView(this);
-        tvIntro.setText("ضع علامة صح (✓) بجانب الباقات التي ترغب في إخفائها من العرض:");
+        tvIntro.setText(TvUtil.translate(this, "ضع علامة صح (✓) بجانب الباقات التي ترغب في إخفائها من العرض:"));
         tvIntro.setTextColor(Color.parseColor("#B0BEC5"));
         tvIntro.setTextSize(12);
-        tvIntro.setPadding(0, 0, 0, (int)(8 * scale));
-        tvIntro.setGravity(Gravity.RIGHT);
+        tvIntro.setPadding(0, 0, 0, (int) (8 * scale));
+        boolean isAr = "ar".equals(TvUtil.getAppLanguage(this));
+        tvIntro.setGravity(isAr ? Gravity.RIGHT : Gravity.LEFT);
         contentLayout.addView(tvIntro);
-        
+
         // Select All / Deselect All Row
         LinearLayout selectRow = new LinearLayout(this);
         selectRow.setOrientation(LinearLayout.HORIZONTAL);
         selectRow.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams selectRowLp = new LinearLayout.LayoutParams(-1, -2);
-        selectRowLp.bottomMargin = (int)(8 * scale);
+        selectRowLp.bottomMargin = (int) (8 * scale);
         selectRow.setLayoutParams(selectRowLp);
-        
-        final List<android.widget.CheckBox> checkBoxes = new ArrayList<>();
-        
+
+        final List<CheckBox> checkBoxes = new ArrayList<>();
+
         TextView btnSelectAll = new TextView(this);
-        btnSelectAll.setText("تحديد الكل (إخفاء الكل)");
-        btnSelectAll.setTextColor(Color.parseColor(ICON_COLOR));
+        btnSelectAll.setText(TvUtil.translate(this, "تحديد الكل (إخفاء الكل)"));
+        btnSelectAll.setTextColor(Color.parseColor(ACCENT_CYAN));
         btnSelectAll.setTextSize(11);
         btnSelectAll.setTypeface(null, Typeface.BOLD);
         btnSelectAll.setGravity(Gravity.CENTER);
-        btnSelectAll.setPadding((int)(8 * scale), (int)(4 * scale), (int)(8 * scale), (int)(4 * scale));
+        btnSelectAll.setPadding((int) (8 * scale), (int) (6 * scale), (int) (8 * scale), (int) (6 * scale));
         GradientDrawable selectBg = new GradientDrawable();
         selectBg.setColor(Color.parseColor("#1A4FC3F7"));
-        selectBg.setCornerRadius(6 * scale);
-        selectBg.setStroke((int)(1 * scale), Color.parseColor("#334FC3F7"));
+        selectBg.setCornerRadius(8 * scale);
+        selectBg.setStroke((int) (1 * scale), Color.parseColor("#334FC3F7"));
         btnSelectAll.setBackground(selectBg);
         LinearLayout.LayoutParams selLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
-        selLp.rightMargin = (int)(4 * scale);
+        selLp.rightMargin = (int) (4 * scale);
         btnSelectAll.setLayoutParams(selLp);
         btnSelectAll.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                for (android.widget.CheckBox cb : checkBoxes) cb.setChecked(true);
+                for (CheckBox cb : checkBoxes) cb.setChecked(true);
             }
         });
         selectRow.addView(btnSelectAll);
-        
+
         TextView btnDeselectAll = new TextView(this);
-        btnDeselectAll.setText("إلغاء التحديد (إظهار الكل)");
+        btnDeselectAll.setText(TvUtil.translate(this, "إلغاء التحديد (إظهار الكل)"));
         btnDeselectAll.setTextColor(Color.WHITE);
         btnDeselectAll.setTextSize(11);
         btnDeselectAll.setTypeface(null, Typeface.BOLD);
         btnDeselectAll.setGravity(Gravity.CENTER);
-        btnDeselectAll.setPadding((int)(8 * scale), (int)(4 * scale), (int)(8 * scale), (int)(4 * scale));
+        btnDeselectAll.setPadding((int) (8 * scale), (int) (6 * scale), (int) (8 * scale), (int) (6 * scale));
         GradientDrawable deselectBg = new GradientDrawable();
         deselectBg.setColor(Color.parseColor("#1AFFFFFF"));
-        deselectBg.setCornerRadius(6 * scale);
-        deselectBg.setStroke((int)(1 * scale), Color.parseColor("#33FFFFFF"));
+        deselectBg.setCornerRadius(8 * scale);
+        deselectBg.setStroke((int) (1 * scale), Color.parseColor("#33FFFFFF"));
         btnDeselectAll.setBackground(deselectBg);
         LinearLayout.LayoutParams deselLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
-        deselLp.leftMargin = (int)(4 * scale);
+        deselLp.leftMargin = (int) (4 * scale);
         btnDeselectAll.setLayoutParams(deselLp);
         btnDeselectAll.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                for (android.widget.CheckBox cb : checkBoxes) cb.setChecked(false);
+                for (CheckBox cb : checkBoxes) cb.setChecked(false);
             }
         });
         selectRow.addView(btnDeselectAll);
-        
+
         contentLayout.addView(selectRow);
 
-        // Scrollview containing checkbox list
         ScrollView sv = new ScrollView(this);
-        sv.setLayoutParams(new LinearLayout.LayoutParams(-1, (int)(180 * scale)));
+        sv.setLayoutParams(new LinearLayout.LayoutParams(-1, (int) (180 * scale)));
         sv.setVerticalScrollBarEnabled(true);
 
         LinearLayout listLayout = new LinearLayout(this);
         listLayout.setOrientation(LinearLayout.VERTICAL);
-        listLayout.setPadding((int)(8 * scale), 0, (int)(8 * scale), 0);
+        listLayout.setPadding((int) (8 * scale), 0, (int) (8 * scale), 0);
 
         for (final String cat : cats) {
-            android.widget.CheckBox cb = new android.widget.CheckBox(this);
+            CheckBox cb = new CheckBox(this);
             cb.setText(cat);
             cb.setTextColor(Color.WHITE);
             cb.setTextSize(13);
             cb.setChecked(sp.getBoolean(prefPrefix + cat, false));
-            
+
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                cb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ICON_COLOR)));
+                cb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ACCENT_BLUE)));
             }
-            
+
             LinearLayout.LayoutParams cbLp = new LinearLayout.LayoutParams(-1, -2);
-            cbLp.bottomMargin = (int)(6 * scale);
+            cbLp.bottomMargin = (int) (6 * scale);
             cb.setLayoutParams(cbLp);
-            
+
             listLayout.addView(cb);
             checkBoxes.add(cb);
         }
         sv.addView(listLayout);
         contentLayout.addView(sv);
 
+        String dialogTitle = type.equals("live") ? "إخفاء باقات القنوات" : (type.equals("vod") ? "إخفاء باقات الأفلام" : "إخفاء باقات المسلسلات");
+
         showPremiumDialog(
-            type.equals("live") ? "إخفاء الباقات الحية" : (type.equals("vod") ? "إخفاء باقات الأفلام" : "إخفاء باقات المسلسلات"),
-            contentLayout,
-            "تطبيق وإخفاء الباقات",
-            new Runnable() {
-                @Override
-                public void run() {
-                    SharedPreferences.Editor editor = sp.edit();
-                    int hiddenCount = 0;
-                    for (int i = 0; i < cats.size(); i++) {
-                        String cat = cats.get(i);
-                        boolean isHidden = checkBoxes.get(i).isChecked();
-                        editor.putBoolean(prefPrefix + cat, isHidden);
-                        if (isHidden) hiddenCount++;
+                dialogTitle,
+                contentLayout,
+                TvUtil.translate(this, "تطبيق وإخفاء الباقات"),
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        SharedPreferences.Editor editor = sp.edit();
+                        int hiddenCount = 0;
+                        for (int i = 0; i < cats.size(); i++) {
+                            String cat = cats.get(i);
+                            boolean isHidden = checkBoxes.get(i).isChecked();
+                            editor.putBoolean(prefPrefix + cat, isHidden);
+                            if (isHidden) hiddenCount++;
+                        }
+                        editor.apply();
+                        Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم تطبيق التعديلات بنجاح!"), Toast.LENGTH_SHORT).show();
                     }
-                    editor.apply();
-                    Toast.makeText(SettingsActivity.this, "تم تطبيق التعديلات وإخفاء " + hiddenCount + " باقة بنجاح!", Toast.LENGTH_SHORT).show();
-                }
-            },
-            "إلغاء",
-            null
+                },
+                TvUtil.translate(this, "إلغاء"),
+                null
         );
     }
 
     private void clearHistoryAction(final String type) {
-        TextView msg = createMessageTextView("هل أنت متأكد من مسح سجل المشاهدة الخاص بـ (" + type.toUpperCase() + ") بالكامل؟ لا يمكن التراجع عن هذه الخطوة.");
-        showPremiumDialog("مسح سجل المشاهدة", msg, "نعم، مسح السجل", new Runnable() {
+        String typeLabel = type.equals("live") ? "القنوات" : (type.equals("movies") ? "الأفلام" : "المسلسلات");
+        TextView msg = createMessageTextView(TvUtil.translate(this, "هل أنت متأكد من مسح سجل المشاهدة الخاص بـ (" + typeLabel + ") بالكامل؟ لا يمكن التراجع عن هذه الخطوة."));
+        showPremiumDialog(TvUtil.translate(this, "مسح سجل المشاهدة"), msg, TvUtil.translate(this, "نعم، مسح السجل"), new Runnable() {
             @Override
             public void run() {
                 if (type.equals("movies")) {
@@ -902,321 +1267,183 @@ public class SettingsActivity extends Activity {
                 } else if (type.equals("live")) {
                     getSharedPreferences("LivePrefs", MODE_PRIVATE).edit().putString("recent_names", "[]").apply();
                 }
-                Toast.makeText(SettingsActivity.this, "تم مسح سجل المشاهدة بالكامل وتصفير الذاكرة التخزينية!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم مسح سجل المشاهدة بالكامل وتصفير الذاكرة التخزينية!"), Toast.LENGTH_SHORT).show();
             }
-        }, "إلغاء", null);
+        }, TvUtil.translate(this, "إلغاء"), null);
     }
 
-    private void liveStreamTypeAction() {
-        final String[] items = {"ExoPlayer (مشغل مدمج تلقائي)", "VLC Player (مشغل خارجي)", "MX Player (مشغل خارجي)", "System Native Player"};
-        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
-        int current = sp.getInt("player_type", 0);
-        
-        float scale = getResources().getDisplayMetrics().density;
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        
-        final RadioGroup rg = new RadioGroup(this);
-        for (int i = 0; i < items.length; i++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(items[i]);
-            rb.setTextColor(Color.WHITE);
-            rb.setTextSize(13);
-            rb.setId(i);
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ICON_COLOR)));
-            }
-            if (i == current) rb.setChecked(true);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-            lp.bottomMargin = (int)(6 * scale);
-            rg.addView(rb, lp);
-        }
-        container.addView(rg);
-
-        showPremiumDialog("نوع البث المباشر", container, "حفظ الاختيار", new Runnable() {
-            @Override
-            public void run() {
-                int selectedId = rg.getCheckedRadioButtonId();
-                sp.edit().putInt("player_type", selectedId).apply();
-                Toast.makeText(SettingsActivity.this, "تم تغيير مشغل البث بنجاح!", Toast.LENGTH_SHORT).show();
-            }
-        }, "إلغاء", null);
-    }
-
-    private void liveStreamFormatAction() {
-        final String[] items = {"تلقائي", "MPEG", "m3u8"};
-        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
-        String current = sp.getString("stream_format", "auto");
-        
-        float scale = getResources().getDisplayMetrics().density;
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        
-        final RadioGroup rg = new RadioGroup(this);
-        for (int i = 0; i < items.length; i++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(items[i]);
-            rb.setTextColor(Color.WHITE);
-            rb.setTextSize(13);
-            rb.setId(i);
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ICON_COLOR)));
-            }
-            if ((i == 0 && current.equals("auto")) || (i == 1 && current.equals("ts")) || (i == 2 && current.equals("m3u8"))) {
-                rb.setChecked(true);
-            }
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-            lp.bottomMargin = (int)(8 * scale);
-            rg.addView(rb, lp);
-        }
-        container.addView(rg);
-        
-        showPremiumDialog("تنسيق البث المباشر", container, "حفظ وتطبيق", new Runnable() {
-            @Override
-            public void run() {
-                int selectedId = rg.getCheckedRadioButtonId();
-                String val = "auto";
-                String name = "تلقائي";
-                if (selectedId == 1) {
-                    val = "ts";
-                    name = "MPEG";
-                } else if (selectedId == 2) {
-                    val = "m3u8";
-                    name = "m3u8";
-                }
-                sp.edit().putString("stream_format", val).apply();
-                Toast.makeText(SettingsActivity.this, "تم تعيين تنسيق البث بنجاح إلى: " + name, Toast.LENGTH_SHORT).show();
-            }
-        }, "إلغاء", null);
-    }
-
-    private void changePlayerAction() {
-        final String[] items = {"المشغل المدمج الأساسي Blue + Player (تلقائي)", "المشغل الخارجي لجميع صيغ البث"};
-        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
-        boolean current = sp.getBoolean("use_external", false);
-        
-        float scale = getResources().getDisplayMetrics().density;
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        
-        final RadioGroup rg = new RadioGroup(this);
-        for (int i = 0; i < items.length; i++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(items[i]);
-            rb.setTextColor(Color.WHITE);
-            rb.setTextSize(13);
-            rb.setId(i);
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ICON_COLOR)));
-            }
-            if ((i == 0 && !current) || (i == 1 && current)) rb.setChecked(true);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-            lp.bottomMargin = (int)(6 * scale);
-            rg.addView(rb, lp);
-        }
-        container.addView(rg);
-
-        showPremiumDialog("Change Player", container, "تطبيق المشغل", new Runnable() {
-            @Override
-            public void run() {
-                int selectedId = rg.getCheckedRadioButtonId();
-                sp.edit().putBoolean("use_external", selectedId == 1).apply();
-                Toast.makeText(SettingsActivity.this, "تم ضبط المشغل الافتراضي بنجاح!", Toast.LENGTH_SHORT).show();
-            }
-        }, "إلغاء", null);
-    }
-
-    private void chooseExternalPlayerAction() {
-        final String[] items = {"إيقاف وتشغيل المشغلات الداخلية (تلقائي)", "تفعيل مشغلات الوسائط الخارجية"};
-        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
-        boolean current = sp.getBoolean("use_external", false);
-        
-        float scale = getResources().getDisplayMetrics().density;
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        
-        final RadioGroup rg = new RadioGroup(this);
-        for (int i = 0; i < items.length; i++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(items[i]);
-            rb.setTextColor(Color.WHITE);
-            rb.setTextSize(13);
-            rb.setId(i);
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ICON_COLOR)));
-            }
-            if ((i == 0 && !current) || (i == 1 && current)) rb.setChecked(true);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-            lp.bottomMargin = (int)(6 * scale);
-            rg.addView(rb, lp);
-        }
-        container.addView(rg);
-
-        showPremiumDialog("اختر مشغل وسائط خارجي", container, "حفظ", new Runnable() {
-            @Override
-            public void run() {
-                int selectedId = rg.getCheckedRadioButtonId();
-                sp.edit().putBoolean("use_external", selectedId == 1).apply();
-                Toast.makeText(SettingsActivity.this, "تم تعديل خيارات المشغل الخارجي!", Toast.LENGTH_SHORT).show();
-            }
-        }, "إلغاء", null);
-    }
-
-    private void autoStartAction() {
-        final String[] items = {"تشغيل تلقائي للبث عند الدخول (افتراضي ومستقر)", "عدم تشغيل البث تلقائياً"};
-        
-        float scale = getResources().getDisplayMetrics().density;
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        
-        final RadioGroup rg = new RadioGroup(this);
-        for (int i = 0; i < items.length; i++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(items[i]);
-            rb.setTextColor(Color.WHITE);
-            rb.setTextSize(13);
-            rb.setId(i);
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ICON_COLOR)));
-            }
-            if (i == 0) rb.setChecked(true);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-            lp.bottomMargin = (int)(6 * scale);
-            rg.addView(rb, lp);
-        }
-        container.addView(rg);
-
-        showPremiumDialog("وضع التشغيل التلقائي", container, "حفظ الخيار", new Runnable() {
-            @Override
-            public void run() {
-                Toast.makeText(SettingsActivity.this, "تم حفظ إعدادات المزامنة والتشغيل بنجاح!", Toast.LENGTH_SHORT).show();
-            }
-        }, "إلغاء", null);
-    }
-
-    private void timeFormatAction() {
-        final String[] items = {"تنسيق 12 ساعة (ص/م)", "تنسيق 24 ساعة (تلقائي)"};
-        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
-        String current = sp.getString("time_format", "12");
-        int activeId = current.equals("24") ? 1 : 0;
-        
-        float scale = getResources().getDisplayMetrics().density;
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        
-        final RadioGroup rg = new RadioGroup(this);
-        for (int i = 0; i < items.length; i++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(items[i]);
-            rb.setTextColor(Color.WHITE);
-            rb.setTextSize(13);
-            rb.setId(i);
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ICON_COLOR)));
-            }
-            if (i == activeId) rb.setChecked(true);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-            lp.bottomMargin = (int)(6 * scale);
-            rg.addView(rb, lp);
-        }
-        container.addView(rg);
-
-        showPremiumDialog("تنسيق الوقت", container, "حفظ التنسيق", new Runnable() {
-            @Override
-            public void run() {
-                int selectedId = rg.getCheckedRadioButtonId();
-                String val = (selectedId == 1) ? "24" : "12";
-                sp.edit().putString("time_format", val).apply();
-                Toast.makeText(SettingsActivity.this, "تم تحديث نمط عرض الوقت بنجاح!", Toast.LENGTH_SHORT).show();
-            }
-        }, "إلغاء", null);
-    }
-
-    private void subtitleSettingsAction() {
-        final String[] sizes = {"حجم خط صغير", "حجم خط متوسط (موصى به)", "حجم خط كبير جداً"};
-        
-        float scale = getResources().getDisplayMetrics().density;
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        
-        final RadioGroup rg = new RadioGroup(this);
-        for (int i = 0; i < sizes.length; i++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(sizes[i]);
-            rb.setTextColor(Color.WHITE);
-            rb.setTextSize(13);
-            rb.setId(i);
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ICON_COLOR)));
-            }
-            if (i == 1) rb.setChecked(true);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-            lp.bottomMargin = (int)(6 * scale);
-            rg.addView(rb, lp);
-        }
-        container.addView(rg);
-
-        showPremiumDialog("إعدادات الترجمة", container, "حفظ الإعدادات", new Runnable() {
-            @Override
-            public void run() {
-                Toast.makeText(SettingsActivity.this, "تم حفظ إعدادات وحجم خط الترجمة بنجاح!", Toast.LENGTH_SHORT).show();
-            }
-        }, "إلغاء", null);
-    }
-
-    private void selectDeviceTypeAction() {
-        final String[] items = {"الهاتف المحمول / تابلت (Mobile Mode)", "شاشات وأجهزة تلفاز (Android TV Mode)"};
-        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
-        int current = sp.getInt("device_mode", 0);
-        
-        float scale = getResources().getDisplayMetrics().density;
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        
-        final RadioGroup rg = new RadioGroup(this);
-        for (int i = 0; i < items.length; i++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(items[i]);
-            rb.setTextColor(Color.WHITE);
-            rb.setTextSize(13);
-            rb.setId(i);
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ICON_COLOR)));
-            }
-            if (i == current) rb.setChecked(true);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-            lp.bottomMargin = (int)(6 * scale);
-            rg.addView(rb, lp);
-        }
-        container.addView(rg);
-
-        showPremiumDialog("Select Device Type", container, "تأكيد الحفظ", new Runnable() {
-            @Override
-            public void run() {
-                 int selectedId = rg.getCheckedRadioButtonId();
-                 sp.edit().putInt("device_mode", selectedId).apply();
-                 Toast.makeText(SettingsActivity.this, "تم ضبط إعدادات توافق الشاشات بنجاح!", Toast.LENGTH_SHORT).show();
-                 recreate();
-             }
-         }, "إلغاء", null);
-    }
+    // ── Real Cloud Update Action ──
 
     private void updateNowAction() {
         final ProgressDialog pd = new ProgressDialog(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK);
-        pd.setMessage(TvUtil.translate(this, "جاري التحقق من وجود تحديثات على السيرفر وتحديث الخلفية والشعار..."));
+        pd.setMessage(TvUtil.translate(this, "جاري التحقق من وجود تحديثات على السيرفر..."));
         pd.setCancelable(false);
         pd.show();
 
-        new android.os.Handler().postDelayed(new Runnable() {
+        new Thread(new Runnable() {
             @Override
             public void run() {
-                pd.dismiss();
-                Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تطبيقك محدث بالكامل إلى الإصدار v4.3 بنجاح! تم استيراد أحدث الإعدادات والخلفية."), Toast.LENGTH_LONG).show();
+                try {
+                    URL configUrl = new URL("https://blueplus-auz.pages.dev/settings.json");
+                    HttpURLConnection conn = (HttpURLConnection) configUrl.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setRequestProperty("User-Agent", "BluePlus/1.3");
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(8000);
+                    conn.connect();
+                    if (conn.getResponseCode() == 200) {
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            sb.append(line);
+                        }
+                        reader.close();
+
+                        String decrypted = TvUtil.decryptAES(sb.toString());
+                        org.json.JSONObject json = new org.json.JSONObject(decrypted);
+
+                        final String serverVersion = json.optString("app_version", "");
+                        final String updateFeatures = json.optString("update_features", "");
+                        final String updateLink = json.optString("update_link", "");
+
+                        String localVersion = "1.3";
+                        try {
+                            localVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+                        } catch (Exception ignored) {}
+
+                        final String fLocalVersion = localVersion;
+
+                        if (!serverVersion.isEmpty() && isServerVersionNewer(serverVersion, localVersion)) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    pd.dismiss();
+                                    showUpdateAvailableDialog(serverVersion, updateFeatures, updateLink);
+                                }
+                            });
+                            return;
+                        } else {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    pd.dismiss();
+                                    showUpToDateDialog(fLocalVersion);
+                                }
+                            });
+                            return;
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Update check failed: " + e.getMessage());
+                }
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        pd.dismiss();
+                        String localVer = "1.3";
+                        try {
+                            localVer = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+                        } catch (Exception ignored) {}
+                        showUpToDateDialog(localVer);
+                    }
+                });
             }
-        }, 1500);
+        }).start();
     }
 
-    // --- Category File Reader ---
+    private void showUpdateAvailableDialog(final String serverVersion, String features, final String link) {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+
+        TextView tvMsg = new TextView(this);
+        String details = (features != null && !features.trim().isEmpty()) ? features : TvUtil.translate(this, "تحسينات شاملة على الأداء والتوافق والاستقرار وتحديث المشغلات.");
+        tvMsg.setText(TvUtil.translate(this, "يتوفر إصدار أحدث من التطبيق: ") + "v" + serverVersion + "\n\n" + details);
+        tvMsg.setTextColor(Color.WHITE);
+        tvMsg.setTextSize(13);
+        tvMsg.setGravity(Gravity.CENTER);
+        tvMsg.setLineSpacing(0, 1.25f);
+        content.addView(tvMsg);
+
+        showPremiumDialog(TvUtil.translate(this, "تحديث جديد متوفر!"), content, TvUtil.translate(this, "تحميل الآن"), new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setData(android.net.Uri.parse(link));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "فشل فتح رابط التحديث!"), Toast.LENGTH_SHORT).show();
+                }
+            }
+        }, TvUtil.translate(this, "لاحقاً"), null);
+    }
+
+    private void showUpToDateDialog(String version) {
+        TextView tv = createMessageTextView(TvUtil.translate(this, "أنت تستخدم أحدث إصدار من التطبيق بنجاح") + " (" + version + ")\n" + TvUtil.translate(this, "لا توجد تحديثات جديدة حالياً."));
+        showPremiumDialog(TvUtil.translate(this, "تطبيقك محدث"), tv, TvUtil.translate(this, "حسناً"), null, null, null);
+    }
+
+    // ── About App Dialog ──
+
+    private void showAboutDialog() {
+        String version = "1.3";
+        try {
+            version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception ignored) {}
+
+        float scale = getResources().getDisplayMetrics().density;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setGravity(Gravity.CENTER_HORIZONTAL);
+        container.setPadding((int) (14 * scale), (int) (8 * scale), (int) (14 * scale), (int) (8 * scale));
+
+        TextView tvTitle = new TextView(this);
+        tvTitle.setText("Blue + IPTV Player");
+        tvTitle.setTextColor(Color.parseColor(ACCENT_CYAN));
+        tvTitle.setTextSize(16);
+        tvTitle.setTypeface(null, Typeface.BOLD);
+        tvTitle.setGravity(Gravity.CENTER);
+        container.addView(tvTitle);
+
+        TextView tvVer = new TextView(this);
+        tvVer.setText("Version " + version + " (Liquid Glass Edition)");
+        tvVer.setTextColor(Color.parseColor("#80B4FF"));
+        tvVer.setTextSize(12);
+        tvVer.setGravity(Gravity.CENTER);
+        tvVer.setPadding(0, (int) (4 * scale), 0, (int) (10 * scale));
+        container.addView(tvVer);
+
+        TextView tvDesc = new TextView(this);
+        tvDesc.setText(TvUtil.translate(this, "مشغل وسائط IPTV فائق السرعة يدعم البث المباشر، مكتبة الأفلام والمسلسلات وتجربة تلفزيونية فاخرة متوافقة مع أجهزة التحكم عن بعد (Android TV & Mobile)."));
+        tvDesc.setTextColor(Color.parseColor("#CFD8DC"));
+        tvDesc.setTextSize(12);
+        tvDesc.setGravity(Gravity.CENTER);
+        tvDesc.setLineSpacing(0, 1.25f);
+        tvDesc.setPadding(0, 0, 0, (int) (12 * scale));
+        container.addView(tvDesc);
+
+        TextView tvMac = new TextView(this);
+        tvMac.setText("MAC: " + getMacAddress().toLowerCase() + "   ✦   Key: " + getDeviceKey());
+        tvMac.setTextColor(Color.parseColor("#8A99AD"));
+        tvMac.setTextSize(11);
+        tvMac.setGravity(Gravity.CENTER);
+        container.addView(tvMac);
+
+        showPremiumDialog(TvUtil.translate(this, "حول التطبيق"), container, TvUtil.translate(this, "الدعم الفني"), new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setData(android.net.Uri.parse("https://t.me/Match_sportss"));
+                    startActivity(intent);
+                } catch (Exception ignored) {}
+            }
+        }, TvUtil.translate(this, "إغلاق"), null);
+    }
+
+    // ── Category JSON Reader ──
 
     private List<String> getLoadedCategories(String type) {
         List<String> list = new ArrayList<>();
@@ -1224,7 +1451,7 @@ public class SettingsActivity extends Activity {
         if (type.equals("live")) file = new File(getExternalFilesDir(null), "xtream_live.json");
         else if (type.equals("vod")) file = new File(getExternalFilesDir(null), "xtream_vod.json");
         else file = new File(getExternalFilesDir(null), "xtream_series.json");
-        
+
         if (!file.exists()) return list;
 
         String targetKey = "";
@@ -1234,7 +1461,7 @@ public class SettingsActivity extends Activity {
 
         if (targetKey.isEmpty()) return list;
 
-        try (com.google.gson.stream.JsonReader reader = new com.google.gson.stream.JsonReader(new java.io.InputStreamReader(new java.io.FileInputStream(file), "UTF-8"))) {
+        try (com.google.gson.stream.JsonReader reader = new com.google.gson.stream.JsonReader(new InputStreamReader(new java.io.FileInputStream(file), "UTF-8"))) {
             reader.beginObject();
             while (reader.hasNext()) {
                 String name = reader.nextName();
@@ -1277,7 +1504,23 @@ public class SettingsActivity extends Activity {
         return list;
     }
 
-    // --- Utility Methods ---
+    // ── Version Comparison & Device Utilities ──
+
+    private boolean isServerVersionNewer(String serverVer, String localVer) {
+        if (serverVer == null || localVer == null) return false;
+        try {
+            String[] sParts = serverVer.replaceAll("[^0-9.]", "").split("\\.");
+            String[] lParts = localVer.replaceAll("[^0-9.]", "").split("\\.");
+            int length = Math.max(sParts.length, lParts.length);
+            for (int i = 0; i < length; i++) {
+                int sNum = i < sParts.length && !sParts[i].isEmpty() ? Integer.parseInt(sParts[i]) : 0;
+                int lNum = i < lParts.length && !lParts[i].isEmpty() ? Integer.parseInt(lParts[i]) : 0;
+                if (sNum > lNum) return true;
+                if (sNum < lNum) return false;
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
 
     private String getDeviceKey() {
         try {
@@ -1330,8 +1573,8 @@ public class SettingsActivity extends Activity {
                 }
                 Bitmap bmp = BitmapFactory.decodeFile(f.getAbsolutePath());
                 if (bmp != null) {
-                    android.graphics.drawable.BitmapDrawable drawable = new android.graphics.drawable.BitmapDrawable(getResources(), bmp);
-                    drawable.setGravity(android.view.Gravity.FILL);
+                    BitmapDrawable drawable = new BitmapDrawable(getResources(), bmp);
+                    drawable.setGravity(Gravity.FILL);
                     rootLayout.setBackground(drawable);
                 } else {
                     f.delete();
@@ -1344,11 +1587,13 @@ public class SettingsActivity extends Activity {
 
     private static class SettingItem {
         String title;
+        String subtitle;
         int iconRes;
         View.OnClickListener listener;
 
-        SettingItem(String title, int iconRes, View.OnClickListener listener) {
+        SettingItem(String title, String subtitle, int iconRes, View.OnClickListener listener) {
             this.title = title;
+            this.subtitle = subtitle;
             this.iconRes = iconRes;
             this.listener = listener;
         }
