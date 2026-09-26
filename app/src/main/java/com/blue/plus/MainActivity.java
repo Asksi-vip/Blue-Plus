@@ -189,7 +189,7 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     try {
-                        String deviceId = getDeviceId();
+                        String deviceId = getUniqueDeviceId();
                         String encodedId = java.net.URLEncoder.encode(deviceId, "UTF-8");
                         String urlStr = "https://camillecyrm.serv00.net/api/install.php?device_id=" + encodedId;
                         
@@ -211,7 +211,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private String getDeviceId() {
+    private String getUniqueDeviceId() {
         android.content.SharedPreferences sp = getSharedPreferences("AppPrefs", MODE_PRIVATE);
         String id = sp.getString("device_unique_id", "");
         if (id.isEmpty()) {
