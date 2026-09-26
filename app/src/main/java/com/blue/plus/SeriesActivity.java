@@ -53,6 +53,7 @@ public class SeriesActivity extends Activity {
     private CatAdapter catAdapter;
     private SeriesAdapter seriesAdapter;
     private ProgressBar loadingBar;
+    private TextView tvStatusCount;
 
     private List<CategoryItem> categories = new ArrayList<>();
     private List<SeriesItem> allSeries = new ArrayList<>();
@@ -125,6 +126,12 @@ public class SeriesActivity extends Activity {
         rootLayout.setFocusableInTouchMode(true);
         rootLayout.requestFocus();
 
+        // Apple Atmospheric Midnight Canvas Overlay
+        View overlay = new View(this);
+        overlay.setLayoutParams(new FrameLayout.LayoutParams(-1, -1));
+        overlay.setBackgroundColor(Color.parseColor("#7305070B"));
+        rootLayout.addView(overlay);
+
         buildUI(); // Call immediately to draw the UI layout
 
         loadData(); // Load local split files instantly on the main thread
@@ -184,8 +191,30 @@ public class SeriesActivity extends Activity {
     }
 
     private void styleTab(TextView tv, boolean active) {
-        tv.setTextColor(active ? Color.parseColor(BLUE_ACTIVE) : Color.WHITE);
-        tv.setTypeface(null, active ? Typeface.BOLD : Typeface.NORMAL);
+        float scale = getResources().getDisplayMetrics().density;
+        if (active) {
+            GradientDrawable activeBg = new GradientDrawable();
+            activeBg.setCornerRadius(12 * scale);
+            String accent = type.equals("movies") ? "#BF5AF2" : "#40C8E0";
+            activeBg.setColor(Color.parseColor(accent));
+            tv.setBackground(activeBg);
+            tv.setTextColor(Color.WHITE);
+            tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        } else {
+            tv.setBackground(null);
+            tv.setTextColor(Color.parseColor("#99FFFFFF"));
+            tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        }
+    }
+
+    private void loadCachedLogo(ImageView iv) {
+        try {
+            File f = new File(getFilesDir(), "splash_logo.png");
+            if (f.exists()) {
+                Bitmap bmp = BitmapFactory.decodeFile(f.getAbsolutePath());
+                if (bmp != null) iv.setImageBitmap(bmp);
+            }
+        } catch (Exception ignored) {}
     }
 
     private void loadData() {
@@ -653,32 +682,37 @@ public class SeriesActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.TRANSPARENT);
 
-        // Header Layout
+        // Apple iOS Liquid Glass Header
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setBackgroundColor(Color.parseColor("#080808"));
-        header.setPadding((int)(16 * scale), (int)(10 * scale), (int)(16 * scale), (int)(10 * scale));
+        header.setBackgroundColor(Color.TRANSPARENT);
+        header.setPadding((int)(16 * scale), (int)(8 * scale), (int)(16 * scale), (int)(4 * scale));
 
-
-
-        // Tabs
+        // Floating Navigation Capsule Bar
         LinearLayout tabs = new LinearLayout(this);
         tabs.setOrientation(LinearLayout.HORIZONTAL);
         tabs.setGravity(Gravity.CENTER_VERTICAL);
+        GradientDrawable tabsBg = new GradientDrawable();
+        tabsBg.setColor(Color.parseColor("#E60B101C"));
+        tabsBg.setCornerRadius(16 * scale);
+        tabsBg.setStroke((int)(1.2f * scale), Color.parseColor("#2680B4FF"));
+        tabs.setBackground(tabsBg);
+        tabs.setPadding((int)(4 * scale), (int)(3 * scale), (int)(4 * scale), (int)(3 * scale));
+
         final String[] tabNames = {"رجوع", "بث مباشر", "افلام", "مسلسلات"};
         for (int i = 0; i < tabNames.length; i++) {
             final int idx = i;
             TextView tv = new TextView(this);
             tv.setText(TvUtil.translate(this, tabNames[i]));
-            tv.setTextSize(14);
-            tv.setPadding((int)(15 * scale), 0, (int)(15 * scale), 0);
+            tv.setTextSize(13);
+            tv.setPadding((int)(14 * scale), (int)(6 * scale), (int)(14 * scale), (int)(6 * scale));
 
             boolean active = false;
             if (idx == 2 && type.equals("movies")) active = true;
             else if (idx == 3 && type.equals("series")) active = true;
             styleTab(tv, active);
-            TvUtil.applyTvFocusHighlight(tv);
+            TvUtil.applyTvFocusHighlight(tv, 12.0f);
             tv.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -712,49 +746,89 @@ public class SeriesActivity extends Activity {
                 }
             });
             tabs.addView(tv);
-
-            if (i < tabNames.length - 1) {
-                View sep = new View(this);
-                sep.setBackgroundColor(Color.parseColor("#333333"));
-                tabs.addView(sep, new LinearLayout.LayoutParams(2, (int)(20 * scale)));
-            }
         }
         header.addView(tabs);
 
-        // Spacer to push logo to the right
-        View spacer = new View(this);
-        header.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1));
+        // Spacer to center logo
+        View spacer1 = new View(this);
+        header.addView(spacer1, new LinearLayout.LayoutParams(0, 1, 1.0f));
 
-        // Premium Search Bar (Harmonized with left panel buttons)
+        // Center Brand Logo (matches Ot2Activity)
+        ImageView logoIv = new ImageView(this);
+        logoIv.setImageResource(R.drawable.home_logo);
+        logoIv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        LinearLayout.LayoutParams logoLp = new LinearLayout.LayoutParams((int)(80 * scale), (int)(40 * scale));
+        logoLp.gravity = Gravity.CENTER_VERTICAL;
+        logoIv.setLayoutParams(logoLp);
+        loadCachedLogo(logoIv);
+        header.addView(logoIv);
+
+        // Spacer to push status pill right
+        View spacer2 = new View(this);
+        header.addView(spacer2, new LinearLayout.LayoutParams(0, 1, 1.0f));
+
+        // Right Status Capsule Pill (matches Ot2Activity)
+        LinearLayout statusPill = new LinearLayout(this);
+        statusPill.setOrientation(LinearLayout.HORIZONTAL);
+        statusPill.setGravity(Gravity.CENTER_VERTICAL);
+        GradientDrawable spBg = new GradientDrawable();
+        spBg.setColor(Color.parseColor("#E60B101C"));
+        spBg.setCornerRadius(999 * scale);
+        spBg.setStroke((int)(1.2f * scale), Color.parseColor("#3380B4FF"));
+        statusPill.setBackground(spBg);
+        statusPill.setPadding((int)(14 * scale), (int)(6 * scale), (int)(14 * scale), (int)(6 * scale));
+
+        View dot = new View(this);
+        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams((int)(8 * scale), (int)(8 * scale));
+        dotParams.leftMargin = (int)(6 * scale);
+        dot.setLayoutParams(dotParams);
+        GradientDrawable dotBg = new GradientDrawable();
+        dotBg.setShape(GradientDrawable.OVAL);
+        dotBg.setColor(Color.parseColor(type.equals("movies") ? "#BF5AF2" : "#40C8E0"));
+        dot.setBackground(dotBg);
+        statusPill.addView(dot);
+
+        tvStatusCount = new TextView(this);
+        tvStatusCount.setTextColor(Color.parseColor("#EBEBF5"));
+        tvStatusCount.setTextSize(12);
+        tvStatusCount.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        String countLabel = type.equals("movies") ? TvUtil.translate(this, "الأفلام: ") : TvUtil.translate(this, "المسلسلات: ");
+        tvStatusCount.setText(countLabel + allSeries.size());
+        statusPill.addView(tvStatusCount);
+        header.addView(statusPill);
+
+        root.addView(header);
+
+        // Search Bar in Category Panel
         EditText search = new EditText(this);
         search.setHint(type.equals("movies") ? TvUtil.translate(this, "بحث عن فيلم...") : TvUtil.translate(this, "بحث عن مسلسل..."));
-        search.setHintTextColor(Color.parseColor("#66A0C0F0")); // Translucent icy-blue hint
+        search.setHintTextColor(Color.parseColor("#80A0C0F0"));
         search.setTextColor(Color.WHITE);
         search.setTextSize(12);
         search.setSingleLine(true);
         search.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         GradientDrawable searchBg = new GradientDrawable();
-        searchBg.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
-        searchBg.setColors(new int[]{Color.parseColor("#0F172A"), Color.parseColor("#1E293B")}); // Premium deep slate-blue gradient
-        searchBg.setCornerRadius(8 * scale);
-        searchBg.setStroke((int)(1.4f * scale), Color.parseColor(STROKE_BLUE)); // Glowing neon-blue outline
+        searchBg.setColor(Color.parseColor("#E60B101C"));
+        searchBg.setCornerRadius(12 * scale);
+        searchBg.setStroke((int)(1.2f * scale), Color.parseColor("#3380B4FF"));
         search.setBackground(searchBg);
         search.setPadding((int)(12 * scale), 0, (int)(12 * scale), 0);
         search.setFocusable(true);
         search.setFocusableInTouchMode(true);
-        TvUtil.applyTvFocusHighlight(search, 8.0f);
+        TvUtil.applyTvFocusHighlight(search, 12.0f);
 
         android.graphics.drawable.Drawable searchIcon = getResources().getDrawable(android.R.drawable.ic_menu_search);
         if (searchIcon != null) {
-            searchIcon.setColorFilter(Color.parseColor(BLUE_ACTIVE), android.graphics.PorterDuff.Mode.SRC_IN); // Glowing active neon-blue search icon
+            String accentHex = type.equals("movies") ? "#BF5AF2" : "#40C8E0";
+            searchIcon.setColorFilter(Color.parseColor(accentHex), android.graphics.PorterDuff.Mode.SRC_IN);
             search.setCompoundDrawablesWithIntrinsicBounds(searchIcon, null, null, null);
             search.setCompoundDrawablePadding((int)(8 * scale));
         }
 
-        LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(-1, (int)(38 * scale));
-        searchLp.setMargins((int)(6 * scale), (int)(6 * scale), (int)(6 * scale), (int)(12 * scale));
+        LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(-1, (int)(36 * scale));
+        searchLp.setMargins((int)(4 * scale), (int)(4 * scale), (int)(4 * scale), (int)(10 * scale));
         search.setLayoutParams(searchLp);
-        
+
         search.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
         search.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -792,23 +866,6 @@ public class SeriesActivity extends Activity {
         });
         setupSearchListener(search);
 
-        // Premium Logo Box for 100% UI consistency
-        FrameLayout logoBox = new FrameLayout(this);
-        GradientDrawable lb = new GradientDrawable();
-        lb.setColor(Color.parseColor("#111111"));
-        lb.setCornerRadius(4 * scale);
-        lb.setStroke(1, Color.parseColor("#333333"));
-        logoBox.setBackground(lb);
-        logoBox.setPadding((int)(4 * scale), (int)(4 * scale), (int)(4 * scale), (int)(4 * scale));
-
-        ImageView logoIv = new ImageView(this);
-        logoIv.setImageResource(R.drawable.home_logo);
-        logoIv.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        logoBox.addView(logoIv, new FrameLayout.LayoutParams((int)(20 * scale), (int)(20 * scale)));
-        header.addView(logoBox);
-
-        root.addView(header);
-
         loadingBar = new ProgressBar(this);
         loadingBar.setIndeterminate(true);
         loadingBar.setVisibility(View.GONE);
@@ -820,29 +877,42 @@ public class SeriesActivity extends Activity {
         // Body Layout
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.HORIZONTAL);
-        body.setPadding((int)(8 * scale), (int)(8 * scale), (int)(8 * scale), (int)(8 * scale));
+        body.setPadding((int)(12 * scale), (int)(6 * scale), (int)(12 * scale), (int)(10 * scale));
 
-        // Categories List (Left) - Premium Translucent Blue Background
+        // Categories List (Left) - Apple Midnight Frosted Glass Card
         LinearLayout catPanel = new LinearLayout(this);
         catPanel.setOrientation(LinearLayout.VERTICAL);
-        catPanel.setPadding((int)(4 * scale), (int)(4 * scale), (int)(4 * scale), (int)(4 * scale));
+        catPanel.setPadding((int)(8 * scale), (int)(10 * scale), (int)(8 * scale), (int)(8 * scale));
         GradientDrawable catPanelBg = new GradientDrawable();
-        catPanelBg.setColor(Color.parseColor(BLUE_TRANS));
-        catPanelBg.setStroke(2, Color.parseColor(STROKE_BLUE));
-        catPanelBg.setCornerRadius(10 * scale);
+        catPanelBg.setColor(Color.parseColor("#E60D1526")); // Midnight frosted glass
+        catPanelBg.setStroke((int)(1.5f * scale), Color.parseColor("#2680B4FF"));
+        catPanelBg.setCornerRadius(18 * scale);
         catPanel.setBackground(catPanelBg);
 
-        // Add category icon ImageView above search
+        // Category icon tile header
+        FrameLayout iconTile = new FrameLayout(this);
+        LinearLayout.LayoutParams itLp = new LinearLayout.LayoutParams((int)(40 * scale), (int)(40 * scale));
+        itLp.gravity = Gravity.CENTER_HORIZONTAL;
+        itLp.bottomMargin = (int)(6 * scale);
+        iconTile.setLayoutParams(itLp);
+        GradientDrawable itBg = new GradientDrawable();
+        itBg.setCornerRadius(12 * scale);
+        String accentHex = type.equals("movies") ? "#BF5AF2" : "#40C8E0";
+        itBg.setColor(Color.parseColor(type.equals("movies") ? "#26BF5AF2" : "#2640C8E0"));
+        itBg.setStroke((int)(1.2f * scale), Color.parseColor(type.equals("movies") ? "#4DBF5AF2" : "#4D40C8E0"));
+        iconTile.setBackground(itBg);
+
         ImageView catIcon = new ImageView(this);
         int resId = type.equals("movies") ? R.drawable.picsart_26_05_20_21_50_41_231 : R.drawable.picsart_26_05_20_21_50_20_637;
         catIcon.setImageResource(resId);
         catIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(-1, (int)(60 * scale));
-        iconLp.setMargins((int)(12 * scale), (int)(12 * scale), (int)(12 * scale), (int)(6 * scale));
-        catIcon.setLayoutParams(iconLp);
-        catPanel.addView(catIcon);
+        FrameLayout.LayoutParams ciLp = new FrameLayout.LayoutParams((int)(24 * scale), (int)(24 * scale));
+        ciLp.gravity = Gravity.CENTER;
+        catIcon.setLayoutParams(ciLp);
+        iconTile.addView(catIcon);
+        catPanel.addView(iconTile);
 
-        catPanel.addView(search); // Add search right below the category icon!
+        catPanel.addView(search);
 
         rvCategories = new RecyclerView(this);
         rvCategories.setLayoutManager(new LinearLayoutManager(this));
@@ -850,8 +920,8 @@ public class SeriesActivity extends Activity {
         rvCategories.setAdapter(catAdapter);
         catPanel.addView(rvCategories, new LinearLayout.LayoutParams(-1, -1));
 
-        LinearLayout.LayoutParams catLp = new LinearLayout.LayoutParams((int)(190 * scale), -1);
-        catLp.rightMargin = (int)(8 * scale);
+        LinearLayout.LayoutParams catLp = new LinearLayout.LayoutParams((int)(200 * scale), -1);
+        catLp.rightMargin = (int)(10 * scale);
         body.addView(catPanel, catLp);
 
         // Series Grid (Right)
@@ -974,6 +1044,10 @@ public class SeriesActivity extends Activity {
             }
         }
         if (catAdapter != null) catAdapter.notifyDataSetChanged();
+        if (tvStatusCount != null) {
+            String countLabel = type.equals("movies") ? TvUtil.translate(this, "الأفلام: ") : TvUtil.translate(this, "المسلسلات: ");
+            tvStatusCount.setText(countLabel + allSeries.size());
+        }
     }
 
     private void refreshSeries() {
@@ -1158,10 +1232,10 @@ public class SeriesActivity extends Activity {
                     // Focus highlight is handled automatically by TvUtil. D-pad scrolling is now 100% smooth.
                 }
             });
-            TvUtil.applyTvFocusHighlight(row, 0.0f);
+            TvUtil.applyTvFocusHighlight(row, 10.0f);
 
             View div = new View(SeriesActivity.this);
-            div.setBackgroundColor(Color.parseColor("#222222"));
+            div.setBackgroundColor(Color.parseColor("#12FFFFFF"));
             LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(-1, 1);
             divLp.topMargin = (int)(2 * scale);
             container.addView(div, divLp);
@@ -1182,9 +1256,23 @@ public class SeriesActivity extends Activity {
 
             boolean sel = cat.name.equals(selectedCategory);
             View row = ((ViewGroup) h.root).getChildAt(0);
-            row.setBackgroundColor(sel ? Color.parseColor(BLUE_TRANS) : Color.TRANSPARENT);
-            h.tvName.setTextColor(sel ? Color.parseColor(BLUE_ACTIVE) : Color.WHITE);
-            h.tvName.setTypeface(null, sel ? Typeface.BOLD : Typeface.NORMAL);
+            float scale = getResources().getDisplayMetrics().density;
+            if (sel) {
+                GradientDrawable selBg = new GradientDrawable();
+                selBg.setCornerRadius(10 * scale);
+                String accentHex = type.equals("movies") ? "#BF5AF2" : "#40C8E0";
+                selBg.setColor(Color.parseColor(type.equals("movies") ? "#26BF5AF2" : "#2640C8E0"));
+                selBg.setStroke((int)(1.2f * scale), Color.parseColor(type.equals("movies") ? "#4DBF5AF2" : "#4D40C8E0"));
+                row.setBackground(selBg);
+                h.tvName.setTextColor(Color.WHITE);
+                h.tvName.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+                h.tvCount.setTextColor(Color.parseColor(accentHex));
+            } else {
+                row.setBackground(null);
+                h.tvName.setTextColor(Color.parseColor("#B0FFFFFF"));
+                h.tvName.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+                h.tvCount.setTextColor(Color.parseColor("#66FFFFFF"));
+            }
 
             row.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -1259,24 +1347,24 @@ public class SeriesActivity extends Activity {
             card.setLayoutParams(cardLp);
 
             GradientDrawable gd = new GradientDrawable();
-            gd.setColor(Color.parseColor(BLUE_TRANS));
-            gd.setCornerRadius(10 * scale);
-            gd.setStroke(2, Color.parseColor(STROKE_BLUE));
+            gd.setColor(Color.parseColor("#E60D1526")); // Midnight frosted glass
+            gd.setCornerRadius(16 * scale);
+            gd.setStroke((int)(1.5f * scale), Color.parseColor("#2680B4FF")); // Specular highlight border
             card.setBackground(gd);
 
             ImageView iv = new ImageView(SeriesActivity.this);
             iv.setTag("cover");
-            LinearLayout.LayoutParams ivLp = new LinearLayout.LayoutParams(-1, (int)(130 * scale));
+            LinearLayout.LayoutParams ivLp = new LinearLayout.LayoutParams(-1, (int)(138 * scale));
             iv.setLayoutParams(ivLp);
             iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
             
-            // Clip cover with rounded corners
+            // Clip cover with rounded corners (iOS squircle)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 iv.setClipToOutline(true);
                 iv.setOutlineProvider(new android.view.ViewOutlineProvider() {
                     @Override
                     public void getOutline(View view, android.graphics.Outline outline) {
-                        outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), 8 * scale);
+                        outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), 12 * scale);
                     }
                 });
             }
@@ -1285,15 +1373,17 @@ public class SeriesActivity extends Activity {
             TextView tv = new TextView(SeriesActivity.this);
             tv.setTag("name");
             tv.setTextColor(Color.WHITE);
-            tv.setTextSize(10);
+            tv.setTextSize(11);
             tv.setGravity(Gravity.CENTER);
             tv.setSingleLine(true);
-            tv.setTypeface(null, Typeface.BOLD);
+            tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
             LinearLayout.LayoutParams tvLp = new LinearLayout.LayoutParams(-1, -2);
             tvLp.topMargin = (int)(6 * scale);
             tv.setLayoutParams(tvLp);
+            tv.setPadding((int)(4 * scale), 0, (int)(4 * scale), 0);
             card.addView(tv);
-            TvUtil.applyTvFocusHighlight(card, 10.0f);
+            TvUtil.applyTvFocusHighlight(card, 16.0f);
 
             return new VH(card);
         }
