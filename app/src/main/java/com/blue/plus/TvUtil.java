@@ -18,29 +18,8 @@ import android.graphics.drawable.BitmapDrawable;
 
 public class TvUtil {
 
-    // Enable TLS 1.2 for older Android versions (4.4 - 7.0) and disable SSL checking globally for IPTV assets
+    // Enable TLS 1.2 for older Android versions (4.4 - 7.0) safely
     public static void enableTls12(Context context) {
-        try {
-            javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[] {
-                new javax.net.ssl.X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; }
-                    public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {}
-                    public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {}
-                }
-            };
-
-            javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("SSL");
-            sc.init(null, trustAllCerts, new java.security.SecureRandom());
-            javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-            
-            javax.net.ssl.HostnameVerifier allHostsValid = new javax.net.ssl.HostnameVerifier() {
-                public boolean verify(String hostname, javax.net.ssl.SSLSession session) { return true; }
-            };
-            javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
-        } catch (Exception e) {
-            android.util.Log.e("TvUtil", "Error disabling SSL checking", e);
-        }
-
         if (android.os.Build.VERSION.SDK_INT >= 16 && android.os.Build.VERSION.SDK_INT <= 20) {
             try {
                 javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLSv1.2");

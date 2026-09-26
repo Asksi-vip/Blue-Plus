@@ -189,9 +189,9 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     try {
-                        String mac = getMacAddress().toLowerCase();
-                        String encodedMac = java.net.URLEncoder.encode(mac, "UTF-8");
-                        String urlStr = "https://camillecyrm.serv00.net/api/install.php?device_id=" + encodedMac;
+                        String deviceId = getDeviceId();
+                        String encodedId = java.net.URLEncoder.encode(deviceId, "UTF-8");
+                        String urlStr = "https://camillecyrm.serv00.net/api/install.php?device_id=" + encodedId;
                         
                         HttpURLConnection c = (HttpURLConnection) new URL(urlStr).openConnection();
                         c.setRequestMethod("GET");
@@ -201,7 +201,7 @@ public class MainActivity extends Activity {
                         int resCode = c.getResponseCode();
                         if (resCode == 200) {
                             sp.edit().putBoolean("is_installed_tracked_v2", true).apply();
-                            Log.d(TAG, "Install registered successfully for MAC: " + mac);
+                            Log.d(TAG, "Install registered successfully for ID: " + deviceId);
                         }
                     } catch (Exception e) {
                         Log.e(TAG, "Failed registering install: " + e.getMessage());
@@ -211,31 +211,14 @@ public class MainActivity extends Activity {
         }
     }
 
-    private String getMacAddress() {
-        try {
-            java.util.List<java.net.NetworkInterface> interfaces = java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces());
-            for (java.net.NetworkInterface intf : interfaces) {
-                if (intf.getName().equalsIgnoreCase("wlan0") || intf.getName().equalsIgnoreCase("eth0")) {
-                    byte[] mac = intf.getHardwareAddress();
-                    if (mac != null) {
-                        StringBuilder buf = new StringBuilder();
-                        for (byte b : mac) buf.append(String.format("%02X:", b));
-                        if (buf.length() > 0) buf.deleteCharAt(buf.length() - 1);
-                        String realMac = buf.toString();
-                        if (!realMac.equals("02:00:00:00:00:00")) return realMac;
-                    }
-                }
-            }
-            String androidId = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
-            if (androidId == null) androidId = "DEADC0DE0000";
-            if (androidId.length() < 12) androidId = (androidId + "000000000000").substring(0, 12);
-            StringBuilder formattedMac = new StringBuilder();
-            for (int i = 0; i < 12; i += 2) {
-                if (i > 0) formattedMac.append(":");
-                formattedMac.append(androidId.substring(i, i + 2).toUpperCase(java.util.Locale.ENGLISH));
-            }
-            return formattedMac.toString();
-        } catch (Exception ex) { return "E1:AA:63:DE:99:AC"; }
+    private String getDeviceId() {
+        android.content.SharedPreferences sp = getSharedPreferences("AppPrefs", MODE_PRIVATE);
+        String id = sp.getString("device_unique_id", "");
+        if (id.isEmpty()) {
+            id = java.util.UUID.randomUUID().toString();
+            sp.edit().putString("device_unique_id", id).apply();
+        }
+        return id;
     }
 
     private void loadCachedImages() {
@@ -369,12 +352,7 @@ public class MainActivity extends Activity {
         try {
             return downloadBitmapHelper(urlStr);
         } catch (Exception e) {
-            if (urlStr.startsWith("https://")) {
-                try {
-                    String httpUrl = urlStr.replace("https://", "http://");
-                    return downloadBitmapHelper(httpUrl);
-                } catch (Exception ex) {}
-            }
+            Log.e(TAG, "Failed to download bitmap: " + e.getMessage());
         }
         return null;
     }
