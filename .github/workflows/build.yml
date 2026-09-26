@@ -38,7 +38,7 @@ jobs:
           fi
 
       - name: Build APK with Gradle
-        run: ./gradlew assembleRelease --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Sign & Verify APK with apksigner
         id: find_apk
