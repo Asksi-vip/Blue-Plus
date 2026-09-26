@@ -34,11 +34,34 @@ public class WaitingActivity extends Activity {
 
     private String dns, username, password, code;
     private TextView tvProgress;
+    private View progressFill;
+    private FrameLayout progressTrack;
     private int currentProgress = 0;
     private boolean isDownloadStarted = false;
     private boolean onlyLive = false;
     private static final String TAG = "WaitingActivity";
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+    private void updateProgressUI(final int percent) {
+        final int p = Math.min(100, Math.max(0, percent));
+        currentProgress = p;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (tvProgress != null) {
+                    tvProgress.setText(p + "%");
+                }
+                if (progressFill != null && progressTrack != null) {
+                    int totalWidth = progressTrack.getWidth();
+                    if (totalWidth > 0) {
+                        android.view.ViewGroup.LayoutParams lp = progressFill.getLayoutParams();
+                        lp.width = (int) (totalWidth * (p / 100.0f));
+                        progressFill.setLayoutParams(lp);
+                    }
+                }
+            }
+        });
+    }
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
@@ -106,68 +129,144 @@ public class WaitingActivity extends Activity {
         root.setBackgroundResource(R.drawable.bg_sports);
         TvUtil.loadCachedBackground(root);
 
+        // Apple Atmospheric Midnight Canvas Overlay
         View overlay = new View(this);
-        overlay.setBackgroundColor(Color.parseColor("#55000000"));
+        overlay.setLayoutParams(new FrameLayout.LayoutParams(-1, -1));
+        overlay.setBackgroundColor(Color.parseColor("#7305070B"));
         root.addView(overlay);
 
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams containerParams = new FrameLayout.LayoutParams(-1, -1);
-        containerParams.gravity = Gravity.CENTER;
-        container.setLayoutParams(containerParams);
-        
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        int cardWidth = Math.min((int)(380 * scale), (int)(screenWidth * 0.78f));
+
+        // Apple Frosted Glass Container Card
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setPadding((int)(26 * scale), (int)(24 * scale), (int)(26 * scale), (int)(22 * scale));
+
+        android.graphics.drawable.GradientDrawable cardBg = new android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{Color.parseColor("#F20B101C"), Color.parseColor("#E60D1526")}
+        );
+        cardBg.setCornerRadius(24 * scale);
+        cardBg.setStroke((int)(1.5f * scale), Color.parseColor("#2680B4FF"));
+        card.setBackground(cardBg);
+
+        FrameLayout.LayoutParams cardLp = new FrameLayout.LayoutParams(cardWidth, -2);
+        cardLp.gravity = Gravity.CENTER;
+        card.setLayoutParams(cardLp);
+
+        // 1. App Logo
         final ImageView logo = new ImageView(this);
         TvUtil.loadCachedLogo(logo, R.drawable.home_logo);
-        int logoSize = (int)(120 * scale);
-        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(logoSize, logoSize);
-        logoParams.gravity = Gravity.CENTER;
+        int logoW = (int)(96 * scale);
+        int logoH = (int)(48 * scale);
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(logoW, logoH);
+        logoParams.gravity = Gravity.CENTER_HORIZONTAL;
+        logoParams.bottomMargin = (int)(12 * scale);
         logo.setLayoutParams(logoParams);
-        container.addView(logo);
+        logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        card.addView(logo);
 
         fetchSettingsAsync(root, logo);
 
+        // 2. App Name / Brand Text
+        TextView tvBrand = new TextView(this);
+        tvBrand.setText("Blue+ Pro");
+        tvBrand.setTextColor(Color.WHITE);
+        tvBrand.setTextSize(17);
+        tvBrand.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD));
+        tvBrand.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams brandLp = new LinearLayout.LayoutParams(-1, -2);
+        brandLp.bottomMargin = (int)(3 * scale);
+        tvBrand.setLayoutParams(brandLp);
+        card.addView(tvBrand);
+
+        // 3. Status Subtitle
+        TextView tvSubtitle = new TextView(this);
+        tvSubtitle.setText(TvUtil.translate(this, "جاري مزامنة وتحميل المحتوى..."));
+        tvSubtitle.setTextColor(Color.parseColor("#88FFFFFF"));
+        tvSubtitle.setTextSize(12);
+        tvSubtitle.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(-1, -2);
+        subLp.bottomMargin = (int)(20 * scale);
+        tvSubtitle.setLayoutParams(subLp);
+        card.addView(tvSubtitle);
+
+        // 4. Sleek Progress Bar Track
+        progressTrack = new FrameLayout(this);
+        LinearLayout.LayoutParams trackLp = new LinearLayout.LayoutParams(-1, (int)(6 * scale));
+        trackLp.bottomMargin = (int)(14 * scale);
+        progressTrack.setLayoutParams(trackLp);
+
+        android.graphics.drawable.GradientDrawable trackBg = new android.graphics.drawable.GradientDrawable();
+        trackBg.setColor(Color.parseColor("#26FFFFFF"));
+        trackBg.setCornerRadius(3 * scale);
+        progressTrack.setBackground(trackBg);
+
+        progressFill = new View(this);
+        FrameLayout.LayoutParams fillLp = new FrameLayout.LayoutParams(0, -1);
+        progressFill.setLayoutParams(fillLp);
+
+        android.graphics.drawable.GradientDrawable fillBg = new android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+            new int[]{Color.parseColor("#0A84FF"), Color.parseColor("#00F2FE")}
+        );
+        fillBg.setCornerRadius(3 * scale);
+        progressFill.setBackground(fillBg);
+        progressTrack.addView(progressFill);
+        card.addView(progressTrack);
+
+        // 5. Progress Percentage Text
         tvProgress = new TextView(this);
         tvProgress.setText("0%");
         tvProgress.setTextColor(Color.WHITE);
         tvProgress.setTextSize(22);
+        tvProgress.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD));
         tvProgress.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams tvParams = new LinearLayout.LayoutParams(-1, -2);
-        tvParams.topMargin = (int)(20 * scale);
         tvProgress.setLayoutParams(tvParams);
-        container.addView(tvProgress);
+        card.addView(tvProgress);
 
         try {
             com.airbnb.lottie.LottieAnimationView lottie = new com.airbnb.lottie.LottieAnimationView(this);
             lottie.setAnimation("hhuu.json");
             lottie.setRepeatCount(com.airbnb.lottie.LottieDrawable.INFINITE);
             lottie.playAnimation();
-            LinearLayout.LayoutParams lottieParams = new LinearLayout.LayoutParams((int)(50 * scale), (int)(50 * scale));
-            lottieParams.gravity = Gravity.CENTER;
-            lottieParams.topMargin = (int)(5 * scale);
+            LinearLayout.LayoutParams lottieParams = new LinearLayout.LayoutParams((int)(38 * scale), (int)(38 * scale));
+            lottieParams.gravity = Gravity.CENTER_HORIZONTAL;
+            lottieParams.topMargin = (int)(6 * scale);
             lottie.setLayoutParams(lottieParams);
-            container.addView(lottie);
+            card.addView(lottie);
         } catch (Exception e) {
             Log.e(TAG, "Lottie error: " + e.getMessage());
         }
 
-        root.addView(container);
+        root.addView(card);
 
-        // Horizontal Bottom News Ticker (TV-like Marquee)
+        // 6. Floating Bottom News Ticker (Apple Capsule Pill)
         LinearLayout tickerContainer = new LinearLayout(this);
         tickerContainer.setOrientation(LinearLayout.HORIZONTAL);
-        tickerContainer.setBackgroundColor(Color.parseColor("#E6080808"));
         tickerContainer.setGravity(Gravity.CENTER_VERTICAL);
-        tickerContainer.setPadding((int)(10 * scale), 0, (int)(10 * scale), 0);
+        tickerContainer.setPadding((int)(12 * scale), (int)(4 * scale), (int)(12 * scale), (int)(4 * scale));
+
+        android.graphics.drawable.GradientDrawable tickerBg = new android.graphics.drawable.GradientDrawable();
+        tickerBg.setColor(Color.parseColor("#E60B101C"));
+        tickerBg.setCornerRadius(15 * scale);
+        tickerBg.setStroke((int)(1.2f * scale), Color.parseColor("#2680B4FF"));
+        tickerContainer.setBackground(tickerBg);
 
         TextView badge = new TextView(this);
-        badge.setText("  الأخبار  ");
+        badge.setText("  " + TvUtil.translate(this, "الأخبار") + "  ");
         badge.setTextColor(Color.BLACK);
-        badge.setBackgroundColor(Color.parseColor("#FFC107"));
         badge.setTextSize(10);
         badge.setTypeface(null, android.graphics.Typeface.BOLD);
         badge.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams(-2, (int)(16 * scale));
+        android.graphics.drawable.GradientDrawable badgeBg = new android.graphics.drawable.GradientDrawable();
+        badgeBg.setColor(Color.parseColor("#FF9F0A")); // iOS Amber
+        badgeBg.setCornerRadius(8 * scale);
+        badge.setBackground(badgeBg);
+        LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams(-2, (int)(18 * scale));
         badgeLp.rightMargin = (int)(8 * scale);
         badge.setLayoutParams(badgeLp);
         tickerContainer.addView(badge);
@@ -177,15 +276,18 @@ public class WaitingActivity extends Activity {
         tickerTv.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);
         tickerTv.setMarqueeRepeatLimit(-1);
         tickerTv.setHorizontallyScrolling(true);
-        tickerTv.setTextColor(Color.WHITE);
-        tickerTv.setTextSize(11);
+        tickerTv.setTextColor(Color.parseColor("#EBEBF5"));
+        tickerTv.setTextSize(11.5f);
         tickerTv.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
         tickerContainer.addView(tickerTv);
 
         TvUtil.setupDualLanguageTicker(this, badge, tickerTv);
 
-        FrameLayout.LayoutParams tickerLp = new FrameLayout.LayoutParams(-1, (int)(22 * scale));
+        FrameLayout.LayoutParams tickerLp = new FrameLayout.LayoutParams(-1, (int)(30 * scale));
         tickerLp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        tickerLp.leftMargin = (int)(24 * scale);
+        tickerLp.rightMargin = (int)(24 * scale);
+        tickerLp.bottomMargin = (int)(14 * scale);
         tickerContainer.setLayoutParams(tickerLp);
         root.addView(tickerContainer);
 
@@ -348,12 +450,7 @@ public class WaitingActivity extends Activity {
                     }
 
                     // 2. Initialize progress text
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            tvProgress.setText("0%");
-                        }
-                    });
+                    updateProgressUI(0);
 
                     // 3. Fetch real expiration date from Xtream Codes login API (only if it is a VIP/direct login or code is empty)
                     if (code == null || code.trim().isEmpty() || code.equalsIgnoreCase("VIP")) {
@@ -424,7 +521,7 @@ public class WaitingActivity extends Activity {
                                 total = done + (1024L * 1024L); // auto-expand estimate if exceeded
                             }
                             int pct = (int) Math.min(99, (done * 100L) / total);
-                            tvProgress.setText(pct + "%");
+                            updateProgressUI(pct);
                             progressHandler.postDelayed(this, 150);
                         }
                     };
@@ -475,11 +572,7 @@ public class WaitingActivity extends Activity {
 
                     isDownloading[0] = false;
                     progressHandler.removeCallbacks(progressUpdater);
-                    runOnUiThread(new Runnable() {
-                        @Override public void run() {
-                            tvProgress.setText("100%");
-                        }
-                    });
+                    updateProgressUI(100);
 
                     // Clear static memory caches to ensure the newly downloaded data is loaded
                     try {
@@ -546,15 +639,9 @@ public class WaitingActivity extends Activity {
                         }
                     }).start();
 
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            currentProgress = 100;
-                            tvProgress.setText("100%");
-                            startActivity(new Intent(WaitingActivity.this, Ot2Activity.class));
-                            finish();
-                        }
-                    });
+                    updateProgressUI(100);
+                    startActivity(new Intent(WaitingActivity.this, Ot2Activity.class));
+                    finish();
 
                 } catch (final Exception e) {
                     runOnUiThread(new Runnable() {
@@ -606,27 +693,11 @@ public class WaitingActivity extends Activity {
             if (contentLength > 0) {
                 float stepProgress = (float) bytesRead / contentLength;
                 final int currentPercent = (int) (((float) index / totalSteps) * 100 + (stepProgress * (100f / totalSteps)));
-                currentProgress = currentPercent;
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (currentPercent >= 0 && currentPercent <= 100) {
-                            tvProgress.setText(currentPercent + "%");
-                        }
-                    }
-                });
+                updateProgressUI(currentPercent);
             } else {
                 float estimatedStepProgress = Math.min((float) bytesRead / (500 * 1024), 0.99f); // assume 500kb avg
                 final int currentPercent = (int) (((float) index / totalSteps) * 100 + (estimatedStepProgress * (100f / totalSteps)));
-                currentProgress = currentPercent;
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (currentPercent >= 0 && currentPercent <= 100) {
-                            tvProgress.setText(currentPercent + "%");
-                        }
-                    }
-                });
+                updateProgressUI(currentPercent);
             }
         }
         input.close();
@@ -753,33 +824,6 @@ public class WaitingActivity extends Activity {
             Log.e(TAG, "isCodeExpired check failed: " + e.getMessage());
         }
         return false;
-    }
-
-    private String getMacAddress() {
-        try {
-            java.util.List<java.net.NetworkInterface> interfaces = java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces());
-            for (java.net.NetworkInterface intf : interfaces) {
-                if (intf.getName().equalsIgnoreCase("wlan0") || intf.getName().equalsIgnoreCase("eth0")) {
-                    byte[] mac = intf.getHardwareAddress();
-                    if (mac != null) {
-                        StringBuilder buf = new StringBuilder();
-                        for (byte b : mac) buf.append(String.format("%02X:", b));
-                        if (buf.length() > 0) buf.deleteCharAt(buf.length() - 1);
-                        String realMac = buf.toString();
-                        if (!realMac.equals("02:00:00:00:00:00")) return realMac;
-                    }
-                }
-            }
-            String androidId = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
-            if (androidId == null) androidId = "DEADC0DE0000";
-            if (androidId.length() < 12) androidId = (androidId + "000000000000").substring(0, 12);
-            StringBuilder formattedMac = new StringBuilder();
-            for (int i = 0; i < 12; i += 2) {
-                if (i > 0) formattedMac.append(":");
-                formattedMac.append(androidId.substring(i, i + 2).toUpperCase(java.util.Locale.ENGLISH));
-            }
-            return formattedMac.toString();
-        } catch (Exception ex) { return "E1:AA:63:DE:99:AC"; }
     }
 
     private String formatExpiryDate(String expDateStr) {
@@ -1172,9 +1216,6 @@ public class WaitingActivity extends Activity {
             }
         } catch (Exception e) {
             Log.e("WaitingActivity", "downloadFile error: " + e.getMessage());
-            if (urlStr.startsWith("https://")) {
-                return downloadFile(urlStr.replace("https://", "http://"), destFile);
-            }
         } finally {
             try { if (is != null) is.close(); } catch (Exception e) {}
             try { if (fos != null) fos.close(); } catch (Exception e) {}

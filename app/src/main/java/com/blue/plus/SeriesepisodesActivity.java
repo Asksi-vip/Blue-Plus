@@ -133,39 +133,72 @@ public class SeriesepisodesActivity extends Activity {
         rootLayout.setLayoutParams(new FrameLayout.LayoutParams(-1, -1));
         rootLayout.setBackgroundResource(R.drawable.bg_sports);
 
-        // Dark dim overlay
+        // Apple Atmospheric Midnight Canvas Overlay
         View overlay = new View(this);
         overlay.setLayoutParams(new FrameLayout.LayoutParams(-1, -1));
-        overlay.setBackgroundColor(Color.parseColor("#E60A0A0A"));
+        overlay.setBackgroundColor(Color.parseColor("#7305070B"));
         rootLayout.addView(overlay);
 
         // Horizontal Layout split (Left: Sidebar, Right: Main Content)
         LinearLayout splitLayout = new LinearLayout(this);
         splitLayout.setOrientation(LinearLayout.HORIZONTAL);
         splitLayout.setLayoutParams(new FrameLayout.LayoutParams(-1, -1));
+        splitLayout.setPadding((int)(14 * scale), (int)(10 * scale), (int)(14 * scale), (int)(10 * scale));
 
         // ─── LEFT SIDEBAR (Seasons List) ───
         LinearLayout sidebar = new LinearLayout(this);
         sidebar.setOrientation(LinearLayout.VERTICAL);
-        sidebar.setPadding((int)(12 * scale), (int)(15 * scale), (int)(12 * scale), (int)(15 * scale));
-        sidebar.setBackgroundColor(Color.parseColor("#141419"));
+        sidebar.setPadding((int)(12 * scale), (int)(12 * scale), (int)(12 * scale), (int)(12 * scale));
+
+        GradientDrawable sbBg = new GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{Color.parseColor("#E60B101C"), Color.parseColor("#E60D1526")}
+        );
+        sbBg.setCornerRadius(20 * scale);
+        sbBg.setStroke((int)(1.2f * scale), Color.parseColor("#2680B4FF"));
+        sidebar.setBackground(sbBg);
+
+        // Header Row inside Sidebar (Back Button + Title)
+        LinearLayout sbHeader = new LinearLayout(this);
+        sbHeader.setOrientation(LinearLayout.HORIZONTAL);
+        sbHeader.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams sbHeaderLp = new LinearLayout.LayoutParams(-1, -2);
+        sbHeaderLp.bottomMargin = (int)(12 * scale);
+        sbHeader.setLayoutParams(sbHeaderLp);
 
         // Back Button
         TextView btnBack = new TextView(this);
         btnBack.setText("↩");
         btnBack.setTextColor(Color.WHITE);
-        btnBack.setTextSize(26);
+        btnBack.setTextSize(18);
         btnBack.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams backLp = new LinearLayout.LayoutParams((int)(40 * scale), (int)(40 * scale));
-        backLp.bottomMargin = (int)(20 * scale);
+        LinearLayout.LayoutParams backLp = new LinearLayout.LayoutParams((int)(36 * scale), (int)(36 * scale));
+        backLp.rightMargin = (int)(10 * scale);
         btnBack.setLayoutParams(backLp);
+
+        GradientDrawable backBg = new GradientDrawable();
+        backBg.setShape(GradientDrawable.OVAL);
+        backBg.setColor(Color.parseColor("#E60B101C"));
+        backBg.setStroke((int)(1.2f * scale), Color.parseColor("#2680B4FF"));
+        btnBack.setBackground(backBg);
+
         btnBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 finish();
             }
         });
-        sidebar.addView(btnBack);
+        TvUtil.applyTvFocusHighlight(btnBack, 18.0f);
+        sbHeader.addView(btnBack);
+
+        TextView tvSbTitle = new TextView(this);
+        tvSbTitle.setText(TvUtil.translate(this, "المواسم"));
+        tvSbTitle.setTextColor(Color.parseColor("#0A84FF"));
+        tvSbTitle.setTextSize(14);
+        tvSbTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        sbHeader.addView(tvSbTitle);
+
+        sidebar.addView(sbHeader);
 
         // Seasons RecyclerView
         rvSeasons = new RecyclerView(this);
@@ -174,29 +207,51 @@ public class SeriesepisodesActivity extends Activity {
         rvSeasons.setAdapter(seasonAdapter);
         sidebar.addView(rvSeasons, new LinearLayout.LayoutParams(-1, -1));
 
-        LinearLayout.LayoutParams sidebarLp = new LinearLayout.LayoutParams((int)(200 * scale), -1);
+        LinearLayout.LayoutParams sidebarLp = new LinearLayout.LayoutParams((int)(210 * scale), -1);
+        sidebarLp.rightMargin = (int)(12 * scale);
         splitLayout.addView(sidebar, sidebarLp);
-
-        // Vertical Divider line
-        View divider = new View(this);
-        divider.setBackgroundColor(Color.parseColor("#22FFFFFF"));
-        splitLayout.addView(divider, new LinearLayout.LayoutParams((int)(1.5f * scale), -1));
 
         // ─── RIGHT SECTION (Episodes List) ───
         LinearLayout rightSection = new LinearLayout(this);
         rightSection.setOrientation(LinearLayout.VERTICAL);
-        rightSection.setPadding((int)(20 * scale), (int)(15 * scale), (int)(20 * scale), (int)(20 * scale));
 
-        // Series Name Header
+        // Header Row (Series Name + Episode count pill)
+        LinearLayout epHeader = new LinearLayout(this);
+        epHeader.setOrientation(LinearLayout.HORIZONTAL);
+        epHeader.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams epHeaderLp = new LinearLayout.LayoutParams(-1, -2);
+        epHeaderLp.bottomMargin = (int)(10 * scale);
+        epHeader.setLayoutParams(epHeaderLp);
+
         TextView tvHeader = new TextView(this);
         tvHeader.setText(seriesName);
         tvHeader.setTextColor(Color.WHITE);
         tvHeader.setTextSize(20);
-        tvHeader.setTypeface(null, Typeface.BOLD);
-        LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
-        headerLp.bottomMargin = (int)(15 * scale);
-        tvHeader.setLayoutParams(headerLp);
-        rightSection.addView(tvHeader);
+        tvHeader.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        LinearLayout.LayoutParams thLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
+        tvHeader.setLayoutParams(thLp);
+        epHeader.addView(tvHeader);
+
+        // Episodes Count Pill
+        LinearLayout countPill = new LinearLayout(this);
+        countPill.setOrientation(LinearLayout.HORIZONTAL);
+        countPill.setGravity(Gravity.CENTER_VERTICAL);
+        GradientDrawable cpBg = new GradientDrawable();
+        cpBg.setColor(Color.parseColor("#E60B101C"));
+        cpBg.setCornerRadius(999 * scale);
+        cpBg.setStroke((int)(1.2f * scale), Color.parseColor("#2680B4FF"));
+        countPill.setBackground(cpBg);
+        countPill.setPadding((int)(12 * scale), (int)(4 * scale), (int)(12 * scale), (int)(4 * scale));
+
+        TextView tvCount = new TextView(this);
+        tvCount.setText(TvUtil.translate(this, "الحلقات"));
+        tvCount.setTextColor(Color.parseColor("#40C8E0"));
+        tvCount.setTextSize(11);
+        tvCount.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        countPill.addView(tvCount);
+        epHeader.addView(countPill);
+
+        rightSection.addView(epHeader);
 
         // Episodes RecyclerView
         rvEpisodes = new RecyclerView(this);
@@ -360,14 +415,14 @@ public class SeriesepisodesActivity extends Activity {
         public VH onCreateViewHolder(ViewGroup parent, int viewType) {
             float scale = getResources().getDisplayMetrics().density;
             TextView tv = new TextView(SeriesepisodesActivity.this);
-            tv.setTextSize(14);
+            tv.setTextSize(13);
             tv.setGravity(Gravity.CENTER_VERTICAL);
-            tv.setPadding((int)(16 * scale), (int)(15 * scale), (int)(16 * scale), (int)(15 * scale));
+            tv.setPadding((int)(14 * scale), (int)(12 * scale), (int)(14 * scale), (int)(12 * scale));
             
             RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(-1, -2);
             lp.bottomMargin = (int)(6 * scale);
             tv.setLayoutParams(lp);
-            TvUtil.applyTvFocusHighlight(tv, 8.0f);
+            TvUtil.applyTvFocusHighlight(tv, 14.0f);
             return new VH(tv);
         }
 
@@ -379,12 +434,25 @@ public class SeriesepisodesActivity extends Activity {
             boolean isSelected = item.seasonNumber.equals(selectedSeasonNum);
             
             float scale = getResources().getDisplayMetrics().density;
-            GradientDrawable gd = new GradientDrawable();
-            gd.setColor(isSelected ? Color.parseColor(BLUE_TRANS) : Color.TRANSPARENT);
-            gd.setCornerRadius(8 * scale);
-            h.tvSeasonName.setBackground(gd);
-            h.tvSeasonName.setTextColor(isSelected ? Color.parseColor(BLUE_ACTIVE) : Color.WHITE);
-            h.tvSeasonName.setTypeface(null, isSelected ? Typeface.BOLD : Typeface.NORMAL);
+            GradientDrawable gd;
+            if (isSelected) {
+                gd = new GradientDrawable(
+                    GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{Color.parseColor("#0A84FF"), Color.parseColor("#0071E3")}
+                );
+                gd.setCornerRadius(14 * scale);
+                h.tvSeasonName.setBackground(gd);
+                h.tvSeasonName.setTextColor(Color.WHITE);
+                h.tvSeasonName.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+            } else {
+                gd = new GradientDrawable();
+                gd.setColor(Color.parseColor("#140B101C"));
+                gd.setCornerRadius(14 * scale);
+                gd.setStroke((int)(1.0f * scale), Color.parseColor("#1A80B4FF"));
+                h.tvSeasonName.setBackground(gd);
+                h.tvSeasonName.setTextColor(Color.parseColor("#B0BEC5"));
+                h.tvSeasonName.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            }
 
             h.itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -443,12 +511,13 @@ public class SeriesepisodesActivity extends Activity {
     class EpisodeAdapter extends RecyclerView.Adapter<EpisodeAdapter.VH> {
         class VH extends RecyclerView.ViewHolder {
             ImageView ivThumb;
-            TextView tvNumber, tvTitle;
+            TextView tvNumber, tvTitle, tvSub;
             VH(View v) {
                 super(v);
                 ivThumb = v.findViewWithTag("thumb");
                 tvNumber = v.findViewWithTag("number");
                 tvTitle = v.findViewWithTag("title");
+                tvSub = v.findViewWithTag("sub");
             }
         }
 
@@ -459,22 +528,22 @@ public class SeriesepisodesActivity extends Activity {
             LinearLayout container = new LinearLayout(SeriesepisodesActivity.this);
             container.setOrientation(LinearLayout.HORIZONTAL);
             container.setGravity(Gravity.CENTER_VERTICAL);
-            container.setPadding((int)(10 * scale), (int)(10 * scale), (int)(10 * scale), (int)(10 * scale));
+            container.setPadding((int)(10 * scale), (int)(8 * scale), (int)(12 * scale), (int)(8 * scale));
 
-            RecyclerView.LayoutParams containerLp = new RecyclerView.LayoutParams(-1, (int)(80 * scale));
-            containerLp.bottomMargin = (int)(10 * scale);
+            RecyclerView.LayoutParams containerLp = new RecyclerView.LayoutParams(-1, (int)(78 * scale));
+            containerLp.bottomMargin = (int)(8 * scale);
             container.setLayoutParams(containerLp);
 
             GradientDrawable gd = new GradientDrawable();
-            gd.setColor(Color.parseColor("#1C1C26"));
-            gd.setCornerRadius(12 * scale);
-            gd.setStroke(2, Color.parseColor("#33FFFFFF"));
+            gd.setColor(Color.parseColor("#E60D1526"));
+            gd.setCornerRadius(16 * scale);
+            gd.setStroke((int)(1.2f * scale), Color.parseColor("#2680B4FF"));
             container.setBackground(gd);
 
             // Left Thumbnail Frame
             FrameLayout thumbFrame = new FrameLayout(SeriesepisodesActivity.this);
-            LinearLayout.LayoutParams tfLp = new LinearLayout.LayoutParams((int)(90 * scale), (int)(60 * scale));
-            tfLp.rightMargin = (int)(15 * scale);
+            LinearLayout.LayoutParams tfLp = new LinearLayout.LayoutParams((int)(90 * scale), (int)(58 * scale));
+            tfLp.rightMargin = (int)(14 * scale);
             thumbFrame.setLayoutParams(tfLp);
 
             ImageView iv = new ImageView(SeriesepisodesActivity.this);
@@ -486,46 +555,83 @@ public class SeriesepisodesActivity extends Activity {
                 iv.setOutlineProvider(new android.view.ViewOutlineProvider() {
                     @Override
                     public void getOutline(View view, android.graphics.Outline outline) {
-                        outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), 8 * scale);
+                        outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), 10 * scale);
                     }
                 });
             }
             thumbFrame.addView(iv, new FrameLayout.LayoutParams(-1, -1));
 
-            // Episode Number Label inside thumbnail
+            // Episode Number Label inside thumbnail (Floating Pill)
             TextView tvNum = new TextView(SeriesepisodesActivity.this);
             tvNum.setTag("number");
             tvNum.setTextColor(Color.WHITE);
-            tvNum.setTextSize(9);
-            tvNum.setTypeface(null, Typeface.BOLD);
-            tvNum.setBackgroundColor(Color.parseColor("#AA000000"));
+            tvNum.setTextSize(9.5f);
+            tvNum.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+            GradientDrawable numBg = new GradientDrawable();
+            numBg.setColor(Color.parseColor("#CC0B101C"));
+            numBg.setCornerRadius(6 * scale);
+            tvNum.setBackground(numBg);
             tvNum.setPadding((int)(6 * scale), (int)(2 * scale), (int)(6 * scale), (int)(2 * scale));
             
             FrameLayout.LayoutParams numLp = new FrameLayout.LayoutParams(-2, -2);
             numLp.gravity = Gravity.TOP | Gravity.LEFT;
+            numLp.topMargin = (int)(4 * scale);
+            numLp.leftMargin = (int)(4 * scale);
             tvNum.setLayoutParams(numLp);
             thumbFrame.addView(tvNum);
 
-            // Red/Blue border outline for thumbnail
             View border = new View(SeriesepisodesActivity.this);
             GradientDrawable borderGd = new GradientDrawable();
             borderGd.setColor(Color.TRANSPARENT);
-            borderGd.setCornerRadius(8 * scale);
-            borderGd.setStroke(2, Color.parseColor(BLUE_ACTIVE));
+            borderGd.setCornerRadius(10 * scale);
+            borderGd.setStroke((int)(1.2f * scale), Color.parseColor("#3380B4FF"));
             border.setBackground(borderGd);
             thumbFrame.addView(border, new FrameLayout.LayoutParams(-1, -1));
 
             container.addView(thumbFrame);
 
-            // Title TextView
+            // Middle Column: Title & Season/Episode Subtitle
+            LinearLayout textCol = new LinearLayout(SeriesepisodesActivity.this);
+            textCol.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout.LayoutParams textColLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
+            textCol.setLayoutParams(textColLp);
+
             TextView tvT = new TextView(SeriesepisodesActivity.this);
             tvT.setTag("title");
             tvT.setTextColor(Color.WHITE);
-            tvT.setTextSize(12);
+            tvT.setTextSize(13);
             tvT.setSingleLine(true);
-            tvT.setTypeface(null, Typeface.BOLD);
-            container.addView(tvT, new LinearLayout.LayoutParams(0, -2, 1));
-            TvUtil.applyTvFocusHighlight(container, 12.0f);
+            tvT.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+            textCol.addView(tvT);
+
+            TextView tvSub = new TextView(SeriesepisodesActivity.this);
+            tvSub.setTag("sub");
+            tvSub.setTextColor(Color.parseColor("#8E8E93"));
+            tvSub.setTextSize(11);
+            tvSub.setSingleLine(true);
+            tvSub.setPadding(0, (int)(3 * scale), 0, 0);
+            textCol.addView(tvSub);
+
+            container.addView(textCol);
+
+            // Play Icon Pill on right
+            TextView playPill = new TextView(SeriesepisodesActivity.this);
+            playPill.setText("▶");
+            playPill.setTextColor(Color.parseColor("#0A84FF"));
+            playPill.setTextSize(14);
+            playPill.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams((int)(32 * scale), (int)(32 * scale));
+            playLp.leftMargin = (int)(8 * scale);
+            playPill.setLayoutParams(playLp);
+
+            GradientDrawable playBg = new GradientDrawable();
+            playBg.setShape(GradientDrawable.OVAL);
+            playBg.setColor(Color.parseColor("#1A0A84FF"));
+            playBg.setStroke((int)(1.0f * scale), Color.parseColor("#4D0A84FF"));
+            playPill.setBackground(playBg);
+            container.addView(playPill);
+
+            TvUtil.applyTvFocusHighlight(container, 16.0f);
 
             return new VH(container);
         }
@@ -534,7 +640,10 @@ public class SeriesepisodesActivity extends Activity {
         public void onBindViewHolder(VH h, int pos) {
             final EpisodeItem ep = currentEpisodesList.get(pos);
             h.tvNumber.setText(String.valueOf(ep.episodeNum));
-            h.tvTitle.setText(seriesName + " - S" + (selectedSeasonNum.length() < 2 ? "0" + selectedSeasonNum : selectedSeasonNum) + "E" + (ep.episodeNum < 10 ? "0" + ep.episodeNum : ep.episodeNum) + " - " + ep.title);
+            h.tvTitle.setText(ep.title != null && !ep.title.trim().isEmpty() ? ep.title : ("الحلقة " + ep.episodeNum));
+            if (h.tvSub != null) {
+                h.tvSub.setText("الموسم " + selectedSeasonNum + " • الحلقة " + ep.episodeNum);
+            }
 
             if (seriesCover != null && !seriesCover.isEmpty()) {
                 TvUtil.loadImage(h.ivThumb, seriesCover);
