@@ -740,18 +740,7 @@ public class Ot1Activity extends Activity {
                 String nameStr = (String) item.get("name");
                 title.setText(nameStr != null ? nameStr : "Playlist");
 
-                String dnsStr = (String) item.get("dns");
-                if (dnsStr != null) {
-                    try {
-                        Uri uri = Uri.parse(dnsStr);
-                        String hostStr = uri.getHost();
-                        host.setText(hostStr != null ? hostStr : dnsStr);
-                    } catch (Exception e) {
-                        host.setText(dnsStr);
-                    }
-                } else {
-                    host.setText("");
-                }
+                host.setText(TvUtil.translate(ctx, "سيرفر سحابي مشفر"));
 
                 // Check if active
                 SharedPreferences spPlaylists = ctx.getSharedPreferences("Playlists", MODE_PRIVATE);
@@ -904,13 +893,11 @@ public class Ot1Activity extends Activity {
         tvName.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
         titleCol.addView(tvName);
 
-        TextView tvDns = new TextView(this);
-        tvDns.setText((String) item.get("dns"));
-        tvDns.setTextColor(Color.parseColor("#80FFFFFF"));
-        tvDns.setTextSize(10.5f);
-        tvDns.setSingleLine(true);
-        tvDns.setEllipsize(TextUtils.TruncateAt.MIDDLE);
-        titleCol.addView(tvDns);
+        TextView tvSec = new TextView(this);
+        tvSec.setText(TvUtil.translate(this, "سيرفر سحابي مشفر وآمن"));
+        tvSec.setTextColor(Color.parseColor("#80FFFFFF"));
+        tvSec.setTextSize(10.5f);
+        titleCol.addView(tvSec);
 
         headBox.addView(titleCol);
         modal.addView(headBox);
