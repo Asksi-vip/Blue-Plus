@@ -496,33 +496,58 @@ public class Ot2Activity extends Activity {
         rootLayout = new FrameLayout(this);
         rootLayout.setBackgroundResource(R.drawable.bg_sports);
 
+        // Apple Atmospheric Midnight Canvas Overlay
         View overlay = new View(this);
-        overlay.setBackgroundColor(Color.parseColor("#55000000"));
+        overlay.setBackgroundColor(Color.parseColor("#7305070B"));
         rootLayout.addView(overlay);
 
+        // Apple Header - Center Brand Logo
         ImageView logo = new ImageView(this);
-        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams((int)(80 * scale), (int)(40 * scale));
+        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams((int)(88 * scale), (int)(44 * scale));
         logoParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        logoParams.topMargin = (int)(10 * scale);
+        logoParams.topMargin = (int)(12 * scale);
         logo.setLayoutParams(logoParams);
         logo.setImageResource(R.drawable.home_logo);
         loadCachedLogo(logo);
         rootLayout.addView(logo);
 
-        final TextView tvExpiry = new TextView(this);
-        tvExpiry.setTextColor(Color.WHITE);
-        tvExpiry.setTextSize(12);
+        // Apple Status Capsule (Expiry & Account Status Pill)
+        final LinearLayout expiryPill = new LinearLayout(this);
+        expiryPill.setOrientation(LinearLayout.HORIZONTAL);
+        expiryPill.setGravity(Gravity.CENTER_VERTICAL);
         FrameLayout.LayoutParams expiryParams = new FrameLayout.LayoutParams(-2, -2);
         expiryParams.gravity = Gravity.TOP | Gravity.RIGHT;
-        expiryParams.topMargin = (int)(20 * scale);
-        expiryParams.rightMargin = (int)(40 * scale);
-        tvExpiry.setLayoutParams(expiryParams);
-        rootLayout.addView(tvExpiry);
+        expiryParams.topMargin = (int)(14 * scale);
+        expiryParams.rightMargin = (int)(28 * scale);
+        expiryPill.setLayoutParams(expiryParams);
+
+        GradientDrawable expBg = new GradientDrawable();
+        expBg.setColor(Color.parseColor("#E60B101C"));
+        expBg.setCornerRadius(999 * scale);
+        expBg.setStroke((int)(1.2f * scale), Color.parseColor("#3380B4FF"));
+        expiryPill.setBackground(expBg);
+        expiryPill.setPadding((int)(14 * scale), (int)(6 * scale), (int)(14 * scale), (int)(6 * scale));
+
+        View dot = new View(this);
+        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams((int)(8 * scale), (int)(8 * scale));
+        dotParams.leftMargin = (int)(8 * scale);
+        dot.setLayoutParams(dotParams);
+        GradientDrawable dotBg = new GradientDrawable();
+        dotBg.setShape(GradientDrawable.OVAL);
+        dotBg.setColor(Color.parseColor("#30D158")); // iOS Green
+        dot.setBackground(dotBg);
+        expiryPill.addView(dot);
+
+        final TextView tvExpiry = new TextView(this);
+        tvExpiry.setTextColor(Color.parseColor("#EBEBF5"));
+        tvExpiry.setTextSize(12);
+        tvExpiry.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        expiryPill.addView(tvExpiry);
+        rootLayout.addView(expiryPill);
 
         String expiryCached = getSharedPreferences("Playlists", MODE_PRIVATE).getString("expiry_date", "");
         if (expiryCached.isEmpty()) {
-            tvExpiry.setText(TvUtil.translate(this, "قائمة التشغيل الحالية تنتهي: ") + TvUtil.translate(this, "جاري التحميل..."));
-            // Fetch dynamically in background
+            tvExpiry.setText(TvUtil.translate(this, "قائمة التشغيل: ") + TvUtil.translate(this, "جاري التحميل..."));
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -550,47 +575,47 @@ public class Ot2Activity extends Activity {
                         String pass = activePass;
                         String code = activeCode;
                             
-                            if (code == null || code.trim().isEmpty() || code.equalsIgnoreCase("VIP")) {
-                                java.net.URL loginUrl = new java.net.URL(dns + "/player_api.php?username=" + user + "&password=" + pass);
-                                java.net.HttpURLConnection loginConn = (java.net.HttpURLConnection) loginUrl.openConnection();
-                                loginConn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                                loginConn.setConnectTimeout(8000);
-                                loginConn.setReadTimeout(8000);
-                                loginConn.connect();
-                                if (loginConn.getResponseCode() == 200) {
-                                    java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(loginConn.getInputStream()));
-                                    StringBuilder sb = new StringBuilder();
-                                    String line;
-                                    while ((line = reader.readLine()) != null) sb.append(line);
-                                    reader.close();
-                                    
-                                    org.json.JSONObject loginJson = new org.json.JSONObject(sb.toString());
-                                    if (loginJson.has("user_info")) {
-                                        org.json.JSONObject userInfo = loginJson.getJSONObject("user_info");
-                                        String expDateStr = userInfo.optString("exp_date", "");
-                                        final String formattedDate = formatExpiryDate(expDateStr);
-                                        getSharedPreferences("Playlists", MODE_PRIVATE).edit().putString("expiry_date", formattedDate).apply();
-                                        runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                tvExpiry.setText(TvUtil.translate(Ot2Activity.this, "قائمة التشغيل الحالية تنتهي: ") + formattedDate);
-                                            }
-                                        });
-                                    }
+                        if (code == null || code.trim().isEmpty() || code.equalsIgnoreCase("VIP")) {
+                            java.net.URL loginUrl = new java.net.URL(dns + "/player_api.php?username=" + user + "&password=" + pass);
+                            java.net.HttpURLConnection loginConn = (java.net.HttpURLConnection) loginUrl.openConnection();
+                            loginConn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                            loginConn.setConnectTimeout(8000);
+                            loginConn.setReadTimeout(8000);
+                            loginConn.connect();
+                            if (loginConn.getResponseCode() == 200) {
+                                java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(loginConn.getInputStream()));
+                                StringBuilder sb = new StringBuilder();
+                                String line;
+                                while ((line = reader.readLine()) != null) sb.append(line);
+                                reader.close();
+                                
+                                org.json.JSONObject loginJson = new org.json.JSONObject(sb.toString());
+                                if (loginJson.has("user_info")) {
+                                    org.json.JSONObject userInfo = loginJson.getJSONObject("user_info");
+                                    String expDateStr = userInfo.optString("exp_date", "");
+                                    final String formattedDate = formatExpiryDate(expDateStr);
+                                    getSharedPreferences("Playlists", MODE_PRIVATE).edit().putString("expiry_date", formattedDate).apply();
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            tvExpiry.setText(TvUtil.translate(Ot2Activity.this, "قائمة التشغيل: ") + formattedDate);
+                                        }
+                                    });
                                 }
-                            } else {
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        tvExpiry.setText(TvUtil.translate(Ot2Activity.this, "قائمة التشغيل الحالية تنتهي: ") + TvUtil.translate(Ot2Activity.this, "غير محدود ♾️"));
-                                    }
-                                });
                             }
+                        } else {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    tvExpiry.setText(TvUtil.translate(Ot2Activity.this, "قائمة التشغيل: ") + TvUtil.translate(Ot2Activity.this, "غير محدود ♾️"));
+                                }
+                            });
+                        }
                     } catch (Exception e) {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                tvExpiry.setText(TvUtil.translate(Ot2Activity.this, "قائمة التشغيل الحالية تنتهي: ") + TvUtil.translate(Ot2Activity.this, "غير محدود ♾️"));
+                                tvExpiry.setText(TvUtil.translate(Ot2Activity.this, "قائمة التشغيل: ") + TvUtil.translate(Ot2Activity.this, "غير محدود ♾️"));
                             }
                         });
                     }
@@ -601,27 +626,30 @@ public class Ot2Activity extends Activity {
             if ("غير محدود ♾️".equals(expiryCached) || "Unlimited ♾️".equals(expiryCached)) {
                 displayExpiry = TvUtil.translate(this, "غير محدود ♾️");
             }
-            tvExpiry.setText(TvUtil.translate(this, "قائمة التشغيل الحالية تنتهي: ") + displayExpiry);
+            tvExpiry.setText(TvUtil.translate(this, "قائمة التشغيل: ") + displayExpiry);
         }
 
+        // Apple Horizontal Navigation Grid
         LinearLayout mainHContainer = new LinearLayout(this);
         mainHContainer.setOrientation(LinearLayout.HORIZONTAL);
         mainHContainer.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams mainParams = new FrameLayout.LayoutParams(-2, -1);
-        mainParams.setMargins((int)(20 * scale), (int)(35 * scale), (int)(20 * scale), (int)(55 * scale));
+        mainParams.setMargins((int)(20 * scale), (int)(32 * scale), (int)(20 * scale), (int)(50 * scale));
         mainHContainer.setLayoutParams(mainParams);
 
-        final View liveTvCard = addGridCard(mainHContainer, TvUtil.translate(this, "بث مباشر"), R.drawable.picsart_26_05_20_21_51_20_597, true, new View.OnClickListener() {
+        // 1. Hero Live TV Card (iOS Blue)
+        final View liveTvCard = addIosGridCard(mainHContainer, TvUtil.translate(this, "بث مباشر"), "قنوات لايف", R.drawable.picsart_26_05_20_21_51_20_597, "#0A84FF", true, new View.OnClickListener() {
             @Override public void onClick(View v) { 
                 startActivity(new Intent(Ot2Activity.this, LiveActivity.class));
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
             }
         });
 
+        // 2. Col 2: Movies & Sports
         LinearLayout col2 = new LinearLayout(this);
         col2.setOrientation(LinearLayout.VERTICAL);
         col2.setGravity(Gravity.CENTER);
-        addGridCard(col2, TvUtil.translate(this, "افلام"), R.drawable.picsart_26_05_20_21_50_41_231, false, new View.OnClickListener() {
+        addIosGridCard(col2, TvUtil.translate(this, "أفلام"), "أحدث الأفلام", R.drawable.picsart_26_05_20_21_50_41_231, "#BF5AF2", false, new View.OnClickListener() {
             @Override public void onClick(View v) { 
                 Intent intent = new Intent(Ot2Activity.this, SeriesActivity.class);
                 intent.putExtra("type", "movies");
@@ -629,7 +657,7 @@ public class Ot2Activity extends Activity {
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
             }
         });
-        addGridCard(col2, TvUtil.translate(this, "Sports"), R.drawable.picsart_26_05_20_21_48_13_028, false, new View.OnClickListener() {
+        addIosGridCard(col2, TvUtil.translate(this, "رياضة"), "مباريات اليوم", R.drawable.picsart_26_05_20_21_48_13_028, "#30D158", false, new View.OnClickListener() {
             @Override public void onClick(View v) { 
                 startActivity(new Intent(Ot2Activity.this, SportsActivity.class));
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
@@ -637,10 +665,11 @@ public class Ot2Activity extends Activity {
         });
         mainHContainer.addView(col2);
 
+        // 3. Col 3: Series & Server Switch
         LinearLayout col3 = new LinearLayout(this);
         col3.setOrientation(LinearLayout.VERTICAL);
         col3.setGravity(Gravity.CENTER);
-        addGridCard(col3, TvUtil.translate(this, "مسلسلات"), R.drawable.picsart_26_05_20_21_50_20_637, false, new View.OnClickListener() {
+        addIosGridCard(col3, TvUtil.translate(this, "مسلسلات"), "مسلسلات حصرية", R.drawable.picsart_26_05_20_21_50_20_637, "#40C8E0", false, new View.OnClickListener() {
             @Override public void onClick(View v) { 
                 Intent intent = new Intent(Ot2Activity.this, SeriesActivity.class);
                 intent.putExtra("type", "series");
@@ -648,11 +677,12 @@ public class Ot2Activity extends Activity {
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
             }
         });
-        addGridCard(col3, TvUtil.translate(this, "تغيير قائمة التسجيل"), R.drawable.picsart_26_05_20_21_48_52_267, false, new View.OnClickListener() {
+        addIosGridCard(col3, TvUtil.translate(this, "تغيير السيرفر"), "قوائم التشغيل", R.drawable.picsart_26_05_20_21_48_52_267, "#FF9F0A", false, new View.OnClickListener() {
             @Override public void onClick(View v) { onBackPressed(); }
         });
         mainHContainer.addView(col3);
 
+        // 4. Col 4: Ad Banner & Floating Capsule Actions
         LinearLayout col4 = new LinearLayout(this);
         col4.setOrientation(LinearLayout.VERTICAL);
         col4.setGravity(Gravity.CENTER);
@@ -662,25 +692,34 @@ public class Ot2Activity extends Activity {
 
         addBanner(col4);
 
+        // Apple Floating Capsule Toolbar
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
         bottomBar.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams bottomBarParams = new LinearLayout.LayoutParams(-1, -2);
-        bottomBarParams.topMargin = (int)(10 * scale);
+        LinearLayout.LayoutParams bottomBarParams = new LinearLayout.LayoutParams(-2, -2);
+        bottomBarParams.topMargin = (int)(12 * scale);
+        bottomBarParams.gravity = Gravity.CENTER_HORIZONTAL;
         bottomBar.setLayoutParams(bottomBarParams);
 
-        addSmallButton(bottomBar, R.drawable.picsart_26_05_20_21_49_58_854, new View.OnClickListener() {
+        GradientDrawable barBg = new GradientDrawable();
+        barBg.setColor(Color.parseColor("#E60B101C"));
+        barBg.setCornerRadius(18 * scale);
+        barBg.setStroke((int)(1.2f * scale), Color.parseColor("#2680B4FF"));
+        bottomBar.setBackground(barBg);
+        bottomBar.setPadding((int)(8 * scale), (int)(6 * scale), (int)(8 * scale), (int)(6 * scale));
+
+        addSmallButton(bottomBar, R.drawable.picsart_26_05_20_21_49_58_854, "#EBEBF5", new View.OnClickListener() {
             @Override public void onClick(View v) {
                 startActivity(new Intent(Ot2Activity.this, SettingsActivity.class));
             }
         });
-        addSmallButton(bottomBar, R.drawable.picsart_26_05_20_21_51_00_695, new View.OnClickListener() {
+        addSmallButton(bottomBar, R.drawable.picsart_26_05_20_21_51_00_695, "#0A84FF", new View.OnClickListener() {
             @Override public void onClick(View v) { refreshData(); }
         });
-        addSmallButton(bottomBar, R.drawable.picsart_26_05_20_21_49_34_776, new View.OnClickListener() {
+        addSmallButton(bottomBar, R.drawable.picsart_26_05_20_21_49_34_776, "#FF453A", new View.OnClickListener() {
             @Override public void onClick(View v) { finishAffinity(); }
         });
-        addSmallButton(bottomBar, R.drawable.tele, new View.OnClickListener() {
+        addSmallButton(bottomBar, R.drawable.tele, "#70D7FF", new View.OnClickListener() {
             @Override public void onClick(View v) {
                 try {
                     Intent intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://t.me/match_sportss"));
@@ -694,7 +733,7 @@ public class Ot2Activity extends Activity {
 
         mainHContainer.addView(col4);
 
-        // Wrap mainHContainer in a HorizontalScrollView to support small screen landscape widths
+        // Safe Horizontal Scrolling for small landscape phone displays
         android.widget.HorizontalScrollView hzScroll = new android.widget.HorizontalScrollView(this);
         FrameLayout.LayoutParams hzLp = new FrameLayout.LayoutParams(-1, -1);
         hzScroll.setLayoutParams(hzLp);
@@ -704,14 +743,16 @@ public class Ot2Activity extends Activity {
 
         rootLayout.addView(hzScroll);
 
+        // Version badge (SF Style Subdued Footnote)
         TextView tvVersion = new TextView(this);
-        tvVersion.setText("v4.3");
-        tvVersion.setTextColor(Color.WHITE);
-        tvVersion.setTextSize(10);
+        tvVersion.setText("Blue+ Pro • v1.3");
+        tvVersion.setTextColor(Color.parseColor("#66FFFFFF"));
+        tvVersion.setTextSize(10.5f);
+        tvVersion.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         FrameLayout.LayoutParams verParams = new FrameLayout.LayoutParams(-2, -2);
         verParams.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-        verParams.bottomMargin = (int)(25 * scale);
-        verParams.rightMargin = (int)(15 * scale);
+        verParams.bottomMargin = (int)(16 * scale);
+        verParams.rightMargin = (int)(24 * scale);
         tvVersion.setLayoutParams(verParams);
         rootLayout.addView(tvVersion);
 
@@ -725,44 +766,83 @@ public class Ot2Activity extends Activity {
         });
     }
 
-    private View addGridCard(LinearLayout container, String title, int iconRes, boolean isLarge, View.OnClickListener listener) {
+    private View addIosGridCard(LinearLayout container, String title, String subtitle, int iconRes, String accentHex, boolean isLarge, View.OnClickListener listener) {
         float scale = getResources().getDisplayMetrics().density;
         
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER);
         
-        int width = (int)(150 * scale);
-        int height = isLarge ? (int)(230 * scale) : (int)(110 * scale);
+        int width = (int)(152 * scale);
+        int height = isLarge ? (int)(236 * scale) : (int)(112 * scale);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(width, height);
         params.setMargins((int)(6 * scale), (int)(5 * scale), (int)(6 * scale), (int)(5 * scale));
         card.setLayoutParams(params);
+        card.setPadding((int)(10 * scale), (int)(10 * scale), (int)(10 * scale), (int)(10 * scale));
         
+        int accentColor = Color.parseColor(accentHex);
+        
+        // Apple Continuous Squircle Frosted Glass container
         GradientDrawable gd = new GradientDrawable();
-        gd.setColor(Color.parseColor(BG_BLUE_TRANS));
-        gd.setCornerRadius(15 * scale);
-        gd.setStroke(3, Color.parseColor(STROKE_BLUE));
+        gd.setColor(Color.parseColor("#E60D1526")); // Deep midnight translucent glass
+        gd.setCornerRadius((isLarge ? 22 : 18) * scale);
+        gd.setStroke((int)(1.5f * scale), Color.parseColor("#2680B4FF")); // Specular reflection border
         card.setBackground(gd);
+        
+        // Squircle Icon Tile Container (Apple Control Center / Settings style)
+        FrameLayout iconTile = new FrameLayout(this);
+        int tileDim = isLarge ? (int)(74 * scale) : (int)(46 * scale);
+        LinearLayout.LayoutParams tileParams = new LinearLayout.LayoutParams(tileDim, tileDim);
+        tileParams.gravity = Gravity.CENTER_HORIZONTAL;
+        iconTile.setLayoutParams(tileParams);
+        
+        GradientDrawable tileBg = new GradientDrawable();
+        tileBg.setCornerRadius((isLarge ? 18 : 14) * scale);
+        int bgAlpha = Color.argb(45, Color.red(accentColor), Color.green(accentColor), Color.blue(accentColor));
+        int strokeAlpha = Color.argb(120, Color.red(accentColor), Color.green(accentColor), Color.blue(accentColor));
+        tileBg.setColor(bgAlpha);
+        tileBg.setStroke((int)(1.2f * scale), strokeAlpha);
+        iconTile.setBackground(tileBg);
         
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
-        int iconSize = isLarge ? (int)(70 * scale) : (int)(40 * scale);
-        icon.setLayoutParams(new LinearLayout.LayoutParams(iconSize, iconSize));
-        card.addView(icon);
+        int iconSize = isLarge ? (int)(44 * scale) : (int)(26 * scale);
+        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(iconSize, iconSize);
+        iconParams.gravity = Gravity.CENTER;
+        icon.setLayoutParams(iconParams);
+        iconTile.addView(icon);
         
+        card.addView(iconTile);
+        
+        // Title Text
         TextView tvTitle = new TextView(this);
         tvTitle.setText(title);
         tvTitle.setTextColor(Color.WHITE);
-        tvTitle.setTextSize(isLarge ? 18 : 14);
-        tvTitle.setTypeface(null, Typeface.BOLD);
+        tvTitle.setTextSize(isLarge ? 17 : 14);
+        tvTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
         tvTitle.setGravity(Gravity.CENTER);
-        tvTitle.setPadding(0, (int)(10 * scale), 0, 0);
+        tvTitle.setPadding(0, (int)(8 * scale), 0, 0);
         card.addView(tvTitle);
         
+        // Subtitle badge
+        if (subtitle != null && !subtitle.isEmpty()) {
+            TextView tvSub = new TextView(this);
+            tvSub.setText(subtitle);
+            tvSub.setTextColor(Color.parseColor("#80FFFFFF"));
+            tvSub.setTextSize(10);
+            tvSub.setGravity(Gravity.CENTER);
+            tvSub.setPadding(0, (int)(2 * scale), 0, 0);
+            card.addView(tvSub);
+        }
+        
         card.setOnClickListener(listener);
-        TvUtil.applyTvFocusHighlight(card);
+        TvUtil.applyTvFocusHighlight(card, (isLarge ? 22.0f : 18.0f));
         container.addView(card);
         return card;
+    }
+
+    private View addGridCard(LinearLayout container, String title, int iconRes, boolean isLarge, View.OnClickListener listener) {
+        return addIosGridCard(container, title, null, iconRes, "#0A84FF", isLarge, listener);
     }
 
     private void addBanner(LinearLayout container) {
@@ -774,9 +854,9 @@ public class Ot2Activity extends Activity {
         banner.setLayoutParams(params);
 
         GradientDrawable gd = new GradientDrawable();
-        gd.setColor(Color.parseColor("#44000000"));
-        gd.setCornerRadius((int)(8 * scale)); // Subtle rounded corners (8dp)
-        gd.setStroke(2, Color.parseColor(STROKE_BLUE));
+        gd.setColor(Color.parseColor("#E60D1526")); // Midnight frosted glass
+        gd.setCornerRadius((int)(18 * scale)); // iOS continuous squircle corners
+        gd.setStroke((int)(1.5f * scale), Color.parseColor("#2680B4FF"));
         banner.setBackground(gd);
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
@@ -853,28 +933,34 @@ public class Ot2Activity extends Activity {
         img.startAnimation(fadeOut);
     }
 
-    private void addSmallButton(LinearLayout container, int iconRes, View.OnClickListener listener) {
+    private void addSmallButton(LinearLayout container, int iconRes, String accentHex, View.OnClickListener listener) {
         float scale = getResources().getDisplayMetrics().density;
         
-        LinearLayout btn = new LinearLayout(this);
-        btn.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams((int)(50 * scale), (int)(50 * scale));
-        params.leftMargin = (int)(8 * scale);
+        FrameLayout btn = new FrameLayout(this);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams((int)(44 * scale), (int)(44 * scale));
+        params.setMargins((int)(5 * scale), 0, (int)(5 * scale), 0);
         btn.setLayoutParams(params);
         
+        int accentColor = Color.parseColor(accentHex);
+        int bgAlpha = Color.argb(40, Color.red(accentColor), Color.green(accentColor), Color.blue(accentColor));
+        int strokeAlpha = Color.argb(100, Color.red(accentColor), Color.green(accentColor), Color.blue(accentColor));
+        
         GradientDrawable gd = new GradientDrawable();
-        gd.setColor(Color.parseColor(BG_BLUE_TRANS));
-        gd.setCornerRadius(10 * scale);
-        gd.setStroke(2, Color.parseColor(STROKE_BLUE));
+        gd.setColor(bgAlpha);
+        gd.setCornerRadius(13 * scale);
+        gd.setStroke((int)(1.2f * scale), strokeAlpha);
         btn.setBackground(gd);
         
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
-        icon.setLayoutParams(new LinearLayout.LayoutParams((int)(26 * scale), (int)(26 * scale)));
+        int iconSize = (int)(22 * scale);
+        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(iconSize, iconSize);
+        iconParams.gravity = Gravity.CENTER;
+        icon.setLayoutParams(iconParams);
         btn.addView(icon);
         
         btn.setOnClickListener(listener);
-        TvUtil.applyTvFocusHighlight(btn);
+        TvUtil.applyTvFocusHighlight(btn, 13.0f);
         container.addView(btn);
     }
 
