@@ -261,10 +261,21 @@ public class SettingsActivity extends Activity {
             @Override public void onClick(View v) { parentalToggleAction(); }
         }));
 
-        // ── Row 4: Playback Preferences ──
-        items.add(new SettingItem("التشغيل التلقائي للبث", autoPlayLive ? "تشغيل فوري عند الفتح" : "يدوي عند الاختيار", R.drawable.ic_settings_sync, new View.OnClickListener() {
+        // ── Row 4: Advanced Features (Multi-Screen & Speed & Reminders) ──
+        items.add(new SettingItem("الشاشات المتعددة", "تشغيل 2 أو 4 شاشات معاً", R.drawable.ic_settings_device, new View.OnClickListener() {
+            @Override public void onClick(View v) { multiScreenAction(); }
+        }));
+        items.add(new SettingItem("فحص سرعة السيرفر", "قياس سرعة السيرفر والـ Ping", R.drawable.ic_settings_sync, new View.OnClickListener() {
+            @Override public void onClick(View v) { speedTestAction(); }
+        }));
+        items.add(new SettingItem("تنبيهات المباريات", "تنبيه قبل 5 دقائق من المباراة", R.drawable.ic_settings_clock, new View.OnClickListener() {
+            @Override public void onClick(View v) { matchRemindersAction(); }
+        }));
+        items.add(new SettingItem("التشغيل التلقائي للبث", autoPlayLive ? "تشغيل فوري عند الفتح" : "يدوي عند الاختيار", R.drawable.ic_settings_player, new View.OnClickListener() {
             @Override public void onClick(View v) { autoStartAction(); }
         }));
+
+        // ── Row 5: Preferences & Interface ──
         items.add(new SettingItem("إعدادات الترجمة", "حجم الخط: " + subSizeLabel, R.drawable.ic_settings_subtitle, new View.OnClickListener() {
             @Override public void onClick(View v) { subtitleSettingsAction(); }
         }));
@@ -274,13 +285,16 @@ public class SettingsActivity extends Activity {
         items.add(new SettingItem("نمط الجهاز", deviceMode == 1 ? "Android TV" : "الهاتف المحمول", R.drawable.ic_settings_device, new View.OnClickListener() {
             @Override public void onClick(View v) { selectDeviceTypeAction(); }
         }));
-
-        // ── Row 5: System & Application Info ──
         items.add(new SettingItem("لغة التطبيق", langLabel, R.drawable.ic_settings_language, new View.OnClickListener() {
             @Override public void onClick(View v) { appLanguageAction(); }
         }));
+
+        // ── Row 6: System & Application Info ──
         items.add(new SettingItem("التحقق من التحديثات", "فحص السيرفر السحابي", R.drawable.ic_settings_update, new View.OnClickListener() {
             @Override public void onClick(View v) { updateNowAction(); }
+        }));
+        items.add(new SettingItem("مسح الذاكرة المؤقتة", "تسريع واستقرار النظام", R.drawable.ic_settings_delete, new View.OnClickListener() {
+            @Override public void onClick(View v) { clearCacheAction(); }
         }));
         items.add(new SettingItem("حول التطبيق والدعم", "Blue+ Pro " + verName, R.drawable.ic_settings_white, new View.OnClickListener() {
             @Override public void onClick(View v) { showAboutDialog(); }
@@ -289,7 +303,7 @@ public class SettingsActivity extends Activity {
             @Override public void onClick(View v) { finish(); }
         }));
 
-        // Construct 5 rows of 4 cards
+        // Construct 6 rows of 4 cards
         LinearLayout currentRow = null;
         View firstSettingCard = null;
         for (int i = 0; i < items.size(); i++) {
@@ -1581,6 +1595,151 @@ public class SettingsActivity extends Activity {
         } catch (Exception ex) {
             return "E1:AA:63:DE:99:AC";
         }
+    }
+
+    private void multiScreenAction() {
+        float scale = getResources().getDisplayMetrics().density;
+        final Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setGravity(Gravity.CENTER);
+        container.setPadding((int) (24 * scale), (int) (20 * scale), (int) (24 * scale), (int) (20 * scale));
+
+        GradientDrawable gd = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.parseColor("#F20B101C"), Color.parseColor("#F20D1526")}
+        );
+        gd.setCornerRadius(18 * scale);
+        gd.setStroke((int) (1.2f * scale), Color.parseColor(STROKE_BLUE));
+        container.setBackground(gd);
+
+        TextView title = new TextView(this);
+        title.setText(TvUtil.translate(this, "خاصية الشاشات المتعددة (Multi-Screen)"));
+        title.setTextColor(Color.parseColor(ACCENT_CYAN));
+        title.setTextSize(16);
+        title.setTypeface(null, Typeface.BOLD);
+        title.setGravity(Gravity.CENTER);
+        container.addView(title);
+
+        TextView desc = new TextView(this);
+        desc.setText(TvUtil.translate(this, "شاهد مباراتين أو 4 قنوات مختلفة في نفس الوقت بكل سلاسة مع تحكم مستقل بالصوت والشاشات."));
+        desc.setTextColor(Color.parseColor("#8A99AD"));
+        desc.setTextSize(12);
+        desc.setGravity(Gravity.CENTER);
+        desc.setPadding(0, (int) (8 * scale), 0, (int) (18 * scale));
+        container.addView(desc);
+
+        LinearLayout btnRow = new LinearLayout(this);
+        btnRow.setOrientation(LinearLayout.HORIZONTAL);
+        btnRow.setGravity(Gravity.CENTER);
+
+        TextView btnDual = createDialogChoiceButton("شاشتان (Dual)", scale, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+                Intent intent = new Intent(SettingsActivity.this, MultiScreenActivity.class);
+                intent.putExtra("screens_count", 2);
+                startActivity(intent);
+            }
+        });
+        btnRow.addView(btnDual);
+
+        TextView btnQuad = createDialogChoiceButton("4 شاشات (Quad 2x2)", scale, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+                Intent intent = new Intent(SettingsActivity.this, MultiScreenActivity.class);
+                intent.putExtra("screens_count", 4);
+                startActivity(intent);
+            }
+        });
+        btnRow.addView(btnQuad);
+
+        container.addView(btnRow);
+        dialog.setContentView(container);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            dialog.getWindow().setLayout(Math.min((int) (440 * scale), (int) (screenWidth * 0.85f)), -2);
+        }
+        dialog.show();
+    }
+
+    private TextView createDialogChoiceButton(String text, float scale, View.OnClickListener l) {
+        TextView btn = new TextView(this);
+        btn.setText(TvUtil.translate(this, text));
+        btn.setTextColor(Color.WHITE);
+        btn.setTextSize(13);
+        btn.setTypeface(null, Typeface.BOLD);
+        btn.setGravity(Gravity.CENTER);
+        btn.setPadding((int) (16 * scale), (int) (10 * scale), (int) (16 * scale), (int) (10 * scale));
+        btn.setFocusable(true);
+        btn.setClickable(true);
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.parseColor("#E60A84FF"));
+        bg.setCornerRadius(12 * scale);
+        bg.setStroke((int) (1.2f * scale), Color.parseColor("#40C4FF"));
+        btn.setBackground(bg);
+        TvUtil.applyTvFocusHighlight(btn, 12.0f);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1.0f);
+        lp.setMargins((int) (6 * scale), 0, (int) (6 * scale), 0);
+        btn.setLayoutParams(lp);
+        btn.setOnClickListener(l);
+        return btn;
+    }
+
+    private void speedTestAction() {
+        SpeedTestDialog.show(SettingsActivity.this);
+    }
+
+    private void matchRemindersAction() {
+        showStyledDialog("تنبيهات المباريات", 
+            "خاصية التنبيه للمباريات تتيح لك استلام إشعار تلقائي قبل 5 دقائق من بداية أي مباراة تختارها في جدول المباريات.\nاضغط على أيقونة التنبيه (🔔) بجانب أي مباراة لتفعيلها.",
+            "حسناً", null,
+            null, null);
+    }
+
+    private void clearCacheAction() {
+        showStyledDialog("مسح الذاكرة المؤقتة", "هل ترغب في تنظيف ذاكرة التخزين المؤقت للتطبيق لتحسين الأداء وتحرير المساحة؟",
+            "تأكيد المسح", "إلغاء",
+            new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        File cacheDir = getCacheDir();
+                        if (cacheDir != null && cacheDir.isDirectory()) {
+                            deleteDir(cacheDir);
+                        }
+                        File extCacheDir = getExternalCacheDir();
+                        if (extCacheDir != null && extCacheDir.isDirectory()) {
+                            deleteDir(extCacheDir);
+                        }
+                        Toast.makeText(SettingsActivity.this, "تم تنظيف الذاكرة المؤقتة بنجاح", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        Toast.makeText(SettingsActivity.this, "فشل مسح الذاكرة المؤقتة: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }, null);
+    }
+
+    private boolean deleteDir(File dir) {
+        if (dir != null && dir.isDirectory()) {
+            String[] children = dir.list();
+            if (children != null) {
+                for (String child : children) {
+                    boolean success = deleteDir(new File(dir, child));
+                    if (!success) return false;
+                }
+            }
+            return dir.delete();
+        } else if (dir != null && dir.isFile()) {
+            return dir.delete();
+        }
+        return false;
     }
 
     private void loadCachedBackground() {

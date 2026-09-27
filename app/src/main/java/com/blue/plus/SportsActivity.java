@@ -1,7 +1,9 @@
 package com.blue.plus;
 
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.Dialog;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -515,6 +517,8 @@ public class SportsActivity extends Activity {
                             fixture.channel = channel;
                             fixture.commentator = commentary;
                             fixture.status = mappedStatus;
+                            fixture.startTime = startTime;
+                            fixture.endTime = endTime;
 
                             // Set score
                             if (mappedStatus.equals("UPCOMING")) {
@@ -988,9 +992,44 @@ public class SportsActivity extends Activity {
             tvWatch.setTextColor(Color.parseColor(ACCENT_CYAN));
             watchBg.setColor(Color.parseColor("#140A84FF"));
             watchBg.setStroke((int) (1 * scale), Color.parseColor("#3380B4FF"));
+            tvWatch.setBackground(watchBg);
+            leftSec.addView(tvWatch);
+
+            SharedPreferences remSp = getSharedPreferences("match_reminders", MODE_PRIVATE);
+            final boolean isRemSet = remSp.getBoolean("remind_" + match.id, false);
+
+            TextView tvReminder = new TextView(this);
+            tvReminder.setText(TvUtil.translate(this, isRemSet ? "🔔 منبه مفعل (5د)" : "🔔 ذكرني (5د)"));
+            tvReminder.setTextColor(isRemSet ? Color.parseColor("#FFD60A") : Color.parseColor("#80B4FF"));
+            tvReminder.setTextSize(9.5f);
+            tvReminder.setTypeface(null, Typeface.BOLD);
+            tvReminder.setGravity(Gravity.CENTER);
+            tvReminder.setPadding((int) (8 * scale), (int) (4 * scale), (int) (8 * scale), (int) (4 * scale));
+
+            GradientDrawable remBg = new GradientDrawable();
+            remBg.setCornerRadius(8 * scale);
+            remBg.setColor(Color.parseColor(isRemSet ? "#33FFD60A" : "#1A0A84FF"));
+            remBg.setStroke((int) (1 * scale), Color.parseColor(isRemSet ? "#FFD60A" : "#3380B4FF"));
+            tvReminder.setBackground(remBg);
+
+            LinearLayout.LayoutParams remLp = new LinearLayout.LayoutParams(-2, -2);
+            remLp.topMargin = (int) (4 * scale);
+            tvReminder.setLayoutParams(remLp);
+            tvReminder.setFocusable(true);
+            tvReminder.setClickable(true);
+            TvUtil.applyTvFocusHighlight(tvReminder, 8.0f);
+            tvReminder.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    toggleMatchReminder(match);
+                }
+            });
+            leftSec.addView(tvReminder);
         }
-        tvWatch.setBackground(watchBg);
-        leftSec.addView(tvWatch);
+        if (!match.status.equals("UPCOMING")) {
+            tvWatch.setBackground(watchBg);
+            leftSec.addView(tvWatch);
+        }
 
         card.addView(leftSec);
 
@@ -1000,6 +1039,8 @@ public class SportsActivity extends Activity {
             public void onClick(View v) {
                 if (!match.streams.isEmpty()) {
                     showStreamsQualityDialog(match);
+                } else if (match.status.equals("UPCOMING")) {
+                    toggleMatchReminder(match);
                 } else {
                     playMatchChannel(match.channel);
                 }
@@ -1008,6 +1049,71 @@ public class SportsActivity extends Activity {
 
         TvUtil.applyTvFocusHighlight(card, 16.0f);
         return card;
+    }
+
+    private void toggleMatchReminder(final MatchFixture match) {
+        if (match == null || match.startTime <= 0) {
+            Toast.makeText(this, TvUtil.translate(this, "موعد المباراة غير متاح لضبط التنبيه"), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        SharedPreferences sp = getSharedPreferences("match_reminders", MODE_PRIVATE);
+        String key = "remind_" + match.id;
+        boolean isSet = sp.getBoolean(key, false);
+
+        AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+
+        Intent intent = new Intent(this, MatchNotificationReceiver.class);
+        intent.putExtra("match_id", match.id);
+        intent.putExtra("team1", match.team1);
+        intent.putExtra("team2", match.team2);
+        intent.putExtra("time", match.time);
+
+        int reqCode = (match.id != null) ? match.id.hashCode() : (int) (match.startTime % 100000);
+        PendingIntent pi = PendingIntent.getBroadcast(
+                this,
+                reqCode,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | (android.os.Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0)
+        );
+
+        if (isSet) {
+            try {
+                am.cancel(pi);
+            } catch (Exception ignored) {}
+            sp.edit().putBoolean(key, false).apply();
+            Toast.makeText(this, TvUtil.translate(this, "تم إلغاء التنبيه للمباراة 🔕"), Toast.LENGTH_SHORT).show();
+        } else {
+            // Exactly 5 minutes before match start
+            long triggerTime = (match.startTime - (5 * 60)) * 1000L;
+            long now = System.currentTimeMillis();
+            if (triggerTime <= now) {
+                Toast.makeText(this, TvUtil.translate(this, "المباراة ستبدأ في أقل من 5 دقائق أو جارية الآن!"), Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pi);
+                } else {
+                    am.setExact(AlarmManager.RTC_WAKEUP, triggerTime, pi);
+                }
+                sp.edit().putBoolean(key, true).apply();
+                Toast.makeText(this, TvUtil.translate(this, "تم تفعيل التنبيه! سنذكرك قبل 5 دقائق من انطلاق المباراة 🔔"), Toast.LENGTH_LONG).show();
+            } catch (SecurityException se) {
+                try {
+                    am.set(AlarmManager.RTC_WAKEUP, triggerTime, pi);
+                    sp.edit().putBoolean(key, true).apply();
+                    Toast.makeText(this, TvUtil.translate(this, "تم تفعيل التنبيه بنجاح 🔔"), Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(this, TvUtil.translate(this, "يرجى منح إذن المنبهات للتطبيق"), Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Toast.makeText(this, TvUtil.translate(this, "تعذر ضبط التنبيه: ") + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        }
+        filterFixtures(currentFilter);
     }
 
     // ── Apple iOS Liquid Glass Streams Quality Dialog ──
@@ -1312,6 +1418,8 @@ public class SportsActivity extends Activity {
         String commentator;
         String status; // LIVE, UPCOMING, FINISHED
         String score;
+        long startTime;
+        long endTime;
         List<MatchStream> streams = new ArrayList<>();
 
         MatchFixture() {}

@@ -713,6 +713,16 @@ public class Ot2Activity extends Activity {
                 startActivity(new Intent(Ot2Activity.this, SettingsActivity.class));
             }
         });
+        addSmallButton(bottomBar, R.drawable.ic_settings_device, "#40C8E0", new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                startActivity(new Intent(Ot2Activity.this, MultiScreenActivity.class));
+            }
+        });
+        addSmallButton(bottomBar, R.drawable.ic_settings_sync, "#FF9F0A", new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                SpeedTestDialog.show(Ot2Activity.this);
+            }
+        });
         addSmallButton(bottomBar, R.drawable.picsart_26_05_20_21_51_00_695, "#0A84FF", new View.OnClickListener() {
             @Override public void onClick(View v) { refreshData(); }
         });

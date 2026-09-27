@@ -2126,6 +2126,30 @@ public class LiveActivity extends Activity {
         TvUtil.applyTvFocusHighlight(btnFsAspect, 10.0f);
         fsTopBar.addView(btnFsAspect, new LinearLayout.LayoutParams(px(dp, 28), px(dp, 28)));
 
+        // Multi-Screen Shortcut
+        ImageView btnFsMulti = new ImageView(this);
+        btnFsMulti.setImageResource(R.drawable.ic_settings_device);
+        btnFsMulti.setColorFilter(Color.parseColor("#40C4FF"));
+        btnFsMulti.setPadding(px(dp, 2), px(dp, 2), px(dp, 2), px(dp, 2));
+        btnFsMulti.setFocusable(true);
+        LinearLayout.LayoutParams lpFsMulti = new LinearLayout.LayoutParams(px(dp, 28), px(dp, 28));
+        lpFsMulti.leftMargin = px(dp, 10);
+        btnFsMulti.setLayoutParams(lpFsMulti);
+        btnFsMulti.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isLocked) return;
+                Intent intent = new Intent(LiveActivity.this, MultiScreenActivity.class);
+                if (currentChannel != null) {
+                    intent.putExtra("initial_url", currentChannel.url);
+                    intent.putExtra("initial_title", currentChannel.name);
+                }
+                startActivity(intent);
+            }
+        });
+        TvUtil.applyTvFocusHighlight(btnFsMulti, 10.0f);
+        fsTopBar.addView(btnFsMulti);
+
         customOverlay.addView(fsTopBar);
 
         // Center Playback Container
@@ -2704,6 +2728,7 @@ public class LiveActivity extends Activity {
         controls.setLayoutParams(new FrameLayout.LayoutParams(-2, -2));
 
         controls.addView(makeCtrlBtn(dp, "تشغيل / إيقاف", 3));
+        controls.addView(makeCtrlBtn(dp, "شاشات متعددة", 10));
         controls.addView(makeCtrlBtn(dp, "تبديل الصيغة", 9));
         controls.addView(makeCtrlBtn(dp, "اضافة الى المفضلة", 2));
         controls.addView(makeCtrlBtn(dp, "بحث", 1));
@@ -2883,6 +2908,13 @@ public class LiveActivity extends Activity {
                     seekLiveForward10s();
                 } else if (action == 9) {
                     showFormatSwitchDialog();
+                } else if (action == 10) {
+                    Intent intent = new Intent(LiveActivity.this, MultiScreenActivity.class);
+                    if (currentChannel != null) {
+                        intent.putExtra("initial_url", currentChannel.url);
+                        intent.putExtra("initial_title", currentChannel.name);
+                    }
+                    startActivity(intent);
                 }
             }
         });
@@ -3843,12 +3875,16 @@ public class LiveActivity extends Activity {
         String name; int count;
         CategoryItem(String n, int c) { name = n; count = c; }
     }
-    static class ChannelItem {
-        int num; String name, logo, category, url;
-        ChannelItem(int nu, String nm, String lg, String cat, String u) {
+
+    public static class ChannelItem {
+        public int num;
+        public String name, logo, category, url;
+        public ChannelItem(int nu, String nm, String lg, String cat, String u) {
             num = nu; name = nm; logo = lg; category = cat; url = u;
         }
-    }    private void showQuickChannelSelector(final float dp) {
+    }
+
+    private void showQuickChannelSelector(final float dp) {
         if (categories == null || categories.isEmpty()) {
             Toast.makeText(this, "قائمة التصنيفات غير متوفرة", Toast.LENGTH_SHORT).show();
             return;
