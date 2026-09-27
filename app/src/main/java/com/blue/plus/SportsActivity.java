@@ -1161,7 +1161,7 @@ public class SportsActivity extends Activity {
             public void run() {
                 File file = new File(getExternalFilesDir(null), "xtream_live.json");
                 if (!file.exists()) {
-                    showToastOnUI(TvUtil.translate(this, "لا توجد قنوات محملة في الذاكرة لتشغيلها!"));
+                    showToastOnUI(TvUtil.translate(SportsActivity.this, "لا توجد قنوات محملة في الذاكرة لتشغيلها!"));
                     return;
                 }
 
