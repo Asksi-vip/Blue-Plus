@@ -53,7 +53,12 @@ public class Media3PlayerEngine implements PlayerEngine {
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build();
 
-        exoPlayer = new ExoPlayer.Builder(context)
+        androidx.media3.exoplayer.DefaultRenderersFactory renderersFactory = 
+                new androidx.media3.exoplayer.DefaultRenderersFactory(context)
+                        .setEnableDecoderFallback(true)
+                        .forceDisableMediaCodecAsynchronousQueueing();
+
+        exoPlayer = new ExoPlayer.Builder(context, renderersFactory)
                 .setMediaSourceFactory(new DefaultMediaSourceFactory(cacheDataSourceFactory))
                 .setLoadControl(loadControl)
                 .build();

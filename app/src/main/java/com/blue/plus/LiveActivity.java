@@ -2528,6 +2528,7 @@ public class LiveActivity extends Activity {
 
         com.google.android.exoplayer2.DefaultRenderersFactory renderersFactory = new com.google.android.exoplayer2.DefaultRenderersFactory(this)
             .setEnableDecoderFallback(true)
+            .forceDisableMediaCodecAsynchronousQueueing()
             .setMediaCodecSelector(customMediaCodecSelector)
             .setExtensionRendererMode(com.google.android.exoplayer2.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
 
@@ -2651,8 +2652,10 @@ public class LiveActivity extends Activity {
                     if (errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ||
                         errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
                         errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
-                        errorMsg.contains("unrecognized") || errorMsg.contains("extractor") || errorMsg.contains("parser") ||
-                        causeMsg.contains("unrecognized") || causeMsg.contains("extractor") || causeMsg.contains("parser")) {
+                        errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED ||
+                        errorCode == PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED ||
+                        errorMsg.contains("unrecognized") || errorMsg.contains("extractor") || errorMsg.contains("parser") || errorMsg.contains("decoder") || errorMsg.contains("mediacodec") ||
+                        causeMsg.contains("unrecognized") || causeMsg.contains("extractor") || causeMsg.contains("parser") || causeMsg.contains("decoder") || causeMsg.contains("mediacodec")) {
                         isFormatError = true;
                     }
                 }
@@ -3068,6 +3071,7 @@ public class LiveActivity extends Activity {
         // 2. Extractor settings for progressive media (including TS)
         DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory();
         extractorsFactory.setTsExtractorFlags(1 | 8 | 64); // FLAG_ALLOW_NON_IDR_KEYFRAMES | FLAG_DETECT_ACCESS_UNITS | FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS
+        extractorsFactory.setConstantBitrateSeekingEnabled(true);
         
         // 3. Disable caching for live streams in LiveActivity to prevent high disk I/O latency on weak hardware (like TV boxes)
         com.google.android.exoplayer2.upstream.DataSource.Factory dataSourceFactory = httpDataSourceFactory;

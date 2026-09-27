@@ -1627,6 +1627,7 @@ public class PlayerActivity extends Activity {
 
             com.google.android.exoplayer2.DefaultRenderersFactory renderersFactory = new com.google.android.exoplayer2.DefaultRenderersFactory(this)
                 .setEnableDecoderFallback(true)
+                .forceDisableMediaCodecAsynchronousQueueing()
                 .setMediaCodecSelector(customMediaCodecSelector)
                 .setExtensionRendererMode(com.google.android.exoplayer2.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
 
@@ -1725,8 +1726,10 @@ public class PlayerActivity extends Activity {
                         if (errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ||
                             errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
                             errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
-                            errorMsg.contains("unrecognized") || errorMsg.contains("extractor") || errorMsg.contains("parser") ||
-                            causeMsg.contains("unrecognized") || causeMsg.contains("extractor") || causeMsg.contains("parser")) {
+                            errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED ||
+                            errorCode == PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED ||
+                            errorMsg.contains("unrecognized") || errorMsg.contains("extractor") || errorMsg.contains("parser") || errorMsg.contains("decoder") || errorMsg.contains("mediacodec") ||
+                            causeMsg.contains("unrecognized") || causeMsg.contains("extractor") || causeMsg.contains("parser") || causeMsg.contains("decoder") || causeMsg.contains("mediacodec")) {
                             isFormatError = true;
                         }
                     }
@@ -1971,6 +1974,7 @@ public class PlayerActivity extends Activity {
         // 2. Extractor settings for progressive media (including TS)
         DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory();
         extractorsFactory.setTsExtractorFlags(1 | 8 | 64); // FLAG_ALLOW_NON_IDR_KEYFRAMES | FLAG_DETECT_ACCESS_UNITS | FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS
+        extractorsFactory.setConstantBitrateSeekingEnabled(true);
         
         // 3. Cache Data Source configuration
         com.google.android.exoplayer2.upstream.DataSource.Factory dataSourceFactory;
@@ -2080,6 +2084,8 @@ public class PlayerActivity extends Activity {
                         }
                     }
                     MediaSource src = buildMediaSource(targetUrl, attemptedMimeType);
+                    exoPlayer.stop();
+                    exoPlayer.clearMediaItems();
                     exoPlayer.setMediaSource(src);
                     exoPlayer.prepare();
                     boolean isLive = originalUrl.toLowerCase().contains("m3u8") || originalUrl.toLowerCase().contains("hls") || originalUrl.toLowerCase().contains(".mpd") || originalUrl.toLowerCase().contains("live");
