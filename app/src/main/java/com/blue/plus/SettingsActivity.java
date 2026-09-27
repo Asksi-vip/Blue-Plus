@@ -1697,15 +1697,16 @@ public class SettingsActivity extends Activity {
     }
 
     private void matchRemindersAction() {
-        showStyledDialog("تنبيهات المباريات", 
-            "خاصية التنبيه للمباريات تتيح لك استلام إشعار تلقائي قبل 5 دقائق من بداية أي مباراة تختارها في جدول المباريات.\nاضغط على أيقونة التنبيه (🔔) بجانب أي مباراة لتفعيلها.",
+        showPremiumDialog("تنبيهات المباريات", 
+            createMessageTextView("خاصية التنبيه للمباريات تتيح لك استلام إشعار تلقائي قبل 5 دقائق من بداية أي مباراة تختارها في جدول المباريات.\n\nاضغط على أيقونة التنبيه (🔔) بجانب أي مباراة لتفعيل التنبيه أو إلغائه."),
             "حسناً", null,
             null, null);
     }
 
     private void clearCacheAction() {
-        showStyledDialog("مسح الذاكرة المؤقتة", "هل ترغب في تنظيف ذاكرة التخزين المؤقت للتطبيق لتحسين الأداء وتحرير المساحة؟",
-            "تأكيد المسح", "إلغاء",
+        showPremiumDialog("مسح الذاكرة المؤقتة", 
+            createMessageTextView("هل ترغب في تنظيف ذاكرة التخزين المؤقت للتطبيق لتحسين الأداء وتحرير المساحة؟"),
+            "تأكيد المسح",
             new Runnable() {
                 @Override
                 public void run() {
@@ -1723,7 +1724,8 @@ public class SettingsActivity extends Activity {
                         Toast.makeText(SettingsActivity.this, "فشل مسح الذاكرة المؤقتة: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 }
-            }, null);
+            },
+            "إلغاء", null);
     }
 
     private boolean deleteDir(File dir) {
