@@ -1244,9 +1244,9 @@ public class SportsActivity extends Activity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            String streamFormat = getSharedPreferences("Settings", MODE_PRIVATE).getString("stream_format", "ts");
+                            String streamFormat = getSharedPreferences("Settings", MODE_PRIVATE).getString("stream_format", "auto");
                             if ("auto".equals(streamFormat)) {
-                                streamFormat = "ts";
+                                streamFormat = "m3u8";
                             }
                             String playUrl = dns + "/live/" + user + "/" + pass + "/" + finalId + "." + streamFormat;
 

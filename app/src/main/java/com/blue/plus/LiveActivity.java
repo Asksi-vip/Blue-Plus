@@ -2701,6 +2701,7 @@ public class LiveActivity extends Activity {
         controls.setLayoutParams(new FrameLayout.LayoutParams(-2, -2));
 
         controls.addView(makeCtrlBtn(dp, "تشغيل / إيقاف", 3));
+        controls.addView(makeCtrlBtn(dp, "تبديل الصيغة", 9));
         controls.addView(makeCtrlBtn(dp, "اضافة الى المفضلة", 2));
         controls.addView(makeCtrlBtn(dp, "بحث", 1));
 
@@ -2877,6 +2878,8 @@ public class LiveActivity extends Activity {
                     seekLiveBackward10s();
                 } else if (action == 8) {
                     seekLiveForward10s();
+                } else if (action == 9) {
+                    showFormatSwitchDialog();
                 }
             }
         });
@@ -2976,22 +2979,112 @@ public class LiveActivity extends Activity {
         });
     }
 
+    private String resolveStreamUrl(String rawUrl) {
+        if (rawUrl == null || rawUrl.isEmpty()) return rawUrl;
+        String formatSetting = getSharedPreferences("Settings", MODE_PRIVATE).getString("stream_format", "auto");
+        if ("m3u8".equalsIgnoreCase(formatSetting)) {
+            if (rawUrl.contains(".ts")) {
+                return rawUrl.replace(".ts", ".m3u8");
+            }
+        } else if ("ts".equalsIgnoreCase(formatSetting)) {
+            if (rawUrl.contains(".m3u8")) {
+                return rawUrl.replace(".m3u8", ".ts");
+            }
+        } else if ("auto".equalsIgnoreCase(formatSetting)) {
+            // Smart auto defaults to modern HLS (.m3u8) with automatic fallback to .ts on error
+            if (rawUrl.contains(".ts")) {
+                return rawUrl.replace(".ts", ".m3u8");
+            }
+        }
+        return rawUrl;
+    }
+
+    private void showFormatSwitchDialog() {
+        if (currentChannel == null || currentChannel.url == null) {
+            Toast.makeText(this, TvUtil.translate(this, "يرجى تشغيل قناة أولاً"), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
+        String currentFormat = sp.getString("stream_format", "auto");
+
+        final String[] items = {
+                TvUtil.translate(this, "تلقائي ذكي (Smart Auto - التحديث الجديد)"),
+                TvUtil.translate(this, "HLS (.m3u8) - البث التكيفي الحديث"),
+                TvUtil.translate(this, "MPEG-TS (.ts) - البث الكلاسيكي المباشر")
+        };
+        final String[] keys = {"auto", "m3u8", "ts"};
+
+        int selectedIndex = 0;
+        if ("m3u8".equalsIgnoreCase(currentFormat)) selectedIndex = 1;
+        else if ("ts".equalsIgnoreCase(currentFormat)) selectedIndex = 2;
+
+        int themeId = getResources().getIdentifier("PremiumDialogTheme", "style", getPackageName());
+        AlertDialog.Builder builder = (themeId != 0) ? 
+            new AlertDialog.Builder(this, themeId) : 
+            new AlertDialog.Builder(this);
+            
+        builder.setTitle(TvUtil.translate(this, "تبديل صيغة البث المباشر"));
+        builder.setSingleChoiceItems(items, selectedIndex, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String selectedKey = keys[which];
+                sp.edit().putString("stream_format", selectedKey).apply();
+
+                String newUrl = currentChannel.url;
+                if ("m3u8".equalsIgnoreCase(selectedKey)) {
+                    if (newUrl.contains(".ts")) {
+                        newUrl = newUrl.replace(".ts", ".m3u8");
+                    }
+                } else if ("ts".equalsIgnoreCase(selectedKey)) {
+                    if (newUrl.contains(".m3u8")) {
+                        newUrl = newUrl.replace(".m3u8", ".ts");
+                    }
+                } else if ("auto".equalsIgnoreCase(selectedKey)) {
+                    if (newUrl.contains(".ts")) {
+                        newUrl = newUrl.replace(".ts", ".m3u8");
+                    }
+                }
+
+                currentChannel = new ChannelItem(currentChannel.num, currentChannel.name, currentChannel.logo, currentChannel.category, newUrl);
+                Toast.makeText(LiveActivity.this, TvUtil.translate(LiveActivity.this, "تم التبديل بنجاح إلى: ") + items[which], Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+
+                // Seamless restart with the new stream format
+                setProgressVisibility(View.VISIBLE);
+                attemptedMimeType = null;
+                MediaSource src = buildMediaSource(newUrl);
+                if (exoPlayer != null) {
+                    exoPlayer.stop();
+                    exoPlayer.clearMediaItems();
+                    exoPlayer.setMediaSource(src);
+                    exoPlayer.prepare();
+                    exoPlayer.setPlayWhenReady(true);
+                }
+            }
+        });
+        builder.setNegativeButton(TvUtil.translate(this, "إلغاء"), null);
+        builder.show();
+    }
+
     private void playChannel(ChannelItem ch) {
         if (ch.url == null || ch.url.isEmpty()) {
             Toast.makeText(this, "رابط غير صالح", 0).show();
             return;
         }
 
+        String activeUrl = resolveStreamUrl(ch.url);
+
         // Check if external player is activated
         android.content.SharedPreferences spSettings = getSharedPreferences("Settings", MODE_PRIVATE);
         boolean useExternal = spSettings.getBoolean("use_external", false);
         int playerType = spSettings.getInt("player_type", 0);
         if (useExternal || playerType > 0) {
-            launchExternalPlayer(this, ch.url, TvUtil.formatNameByLanguage(ch.name), null, null, playerType);
+            launchExternalPlayer(this, activeUrl, TvUtil.formatNameByLanguage(ch.name), null, null, playerType);
             return;
         }
 
-        currentChannel = ch;
+        currentChannel = new ChannelItem(ch.num, ch.name, ch.logo, ch.category, activeUrl);
         attemptedMimeType = null;
         tvChannelTitle.setText(TvUtil.formatNameByLanguage(ch.name));
         updateFavButtonText();
@@ -3006,7 +3099,7 @@ public class LiveActivity extends Activity {
                 recentChannels.remove(i);
             }
         }
-        recentChannels.add(0, ch);
+        recentChannels.add(0, currentChannel);
         if (recentChannels.size() > 50) recentChannels.remove(recentChannels.size() - 1);
         saveRecentChannels();
 
@@ -3016,7 +3109,7 @@ public class LiveActivity extends Activity {
         if (rvCategories != null) rvCategories.getAdapter().notifyDataSetChanged();
         if (rvChannels != null) rvChannels.getAdapter().notifyDataSetChanged();
         focusSelectedChannel();
-        MediaSource src = buildMediaSource(ch.url);
+        MediaSource src = buildMediaSource(activeUrl);
         if (exoPlayer != null) { 
             exoPlayer.stop();
             exoPlayer.clearMediaItems();

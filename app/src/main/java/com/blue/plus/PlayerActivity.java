@@ -1477,7 +1477,7 @@ public class PlayerActivity extends Activity {
             btnSettings.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    showSpeedDialog();
+                    showPlayerMenuDialog();
                 }
             });
             TvUtil.applyTvFocusHighlight(btnSettings);
@@ -1808,6 +1808,7 @@ public class PlayerActivity extends Activity {
 
     private void startPlayback(long position) {
         if (exoPlayer != null) {
+            videoUrl = resolveStreamUrl(videoUrl);
             attemptedMimeType = null;
             MediaSource src = buildMediaSource(videoUrl);
             exoPlayer.setMediaSource(src);
@@ -2359,6 +2360,126 @@ public class PlayerActivity extends Activity {
         } catch (Exception e) {
             Toast.makeText(context, "خطأ في تشغيل المشغل الخارجي: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private String resolveStreamUrl(String rawUrl) {
+        if (rawUrl == null || rawUrl.isEmpty()) return rawUrl;
+        String formatSetting = getSharedPreferences("Settings", MODE_PRIVATE).getString("stream_format", "auto");
+        if ("m3u8".equalsIgnoreCase(formatSetting)) {
+            if (rawUrl.contains(".ts")) {
+                return rawUrl.replace(".ts", ".m3u8");
+            }
+        } else if ("ts".equalsIgnoreCase(formatSetting)) {
+            if (rawUrl.contains(".m3u8")) {
+                return rawUrl.replace(".m3u8", ".ts");
+            }
+        } else if ("auto".equalsIgnoreCase(formatSetting)) {
+            if (rawUrl.contains(".ts")) {
+                return rawUrl.replace(".ts", ".m3u8");
+            }
+        }
+        return rawUrl;
+    }
+
+    private void showPlayerMenuDialog() {
+        final boolean isLive = videoUrl != null && (videoUrl.contains(".ts") || videoUrl.contains(".m3u8") || videoUrl.contains("/live/") || videoUrl.contains("format=m3u8"));
+        
+        final java.util.List<String> menuItems = new java.util.ArrayList<>();
+        menuItems.add(TvUtil.translate(this, "سرعة التشغيل"));
+        if (isLive) {
+            menuItems.add(TvUtil.translate(this, "تبديل صيغة البث (HLS / TS)"));
+        }
+        menuItems.add(TvUtil.translate(this, "نسبة العرض إلى الارتفاع"));
+        
+        int themeId = getResources().getIdentifier("PremiumDialogTheme", "style", getPackageName());
+        android.app.AlertDialog.Builder b = (themeId != 0) ? 
+            new android.app.AlertDialog.Builder(this, themeId) : 
+            new android.app.AlertDialog.Builder(this);
+        b.setTitle(TvUtil.translate(this, "خيارات المشغل"));
+        b.setItems(menuItems.toArray(new String[0]), new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface d, int which) {
+                String selected = menuItems.get(which);
+                if (selected.contains("سرعة")) {
+                    showSpeedDialog();
+                } else if (selected.contains("صيغة")) {
+                    showFormatSwitchDialog();
+                } else if (selected.contains("نسبة")) {
+                    int nextAspect = (currentAspectIndex + 1) % 3;
+                    applyAspectRatio(nextAspect, true);
+                }
+            }
+        });
+        b.show();
+    }
+
+    private void showFormatSwitchDialog() {
+        if (videoUrl == null) return;
+        final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
+        String currentFormat = sp.getString("stream_format", "auto");
+
+        final String[] items = {
+                TvUtil.translate(this, "تلقائي ذكي (Smart Auto - التحديث الجديد)"),
+                TvUtil.translate(this, "HLS (.m3u8) - البث التكيفي الحديث"),
+                TvUtil.translate(this, "MPEG-TS (.ts) - البث الكلاسيكي المباشر")
+        };
+        final String[] keys = {"auto", "m3u8", "ts"};
+
+        int selectedIndex = 0;
+        if ("m3u8".equalsIgnoreCase(currentFormat)) selectedIndex = 1;
+        else if ("ts".equalsIgnoreCase(currentFormat)) selectedIndex = 2;
+
+        int themeId = getResources().getIdentifier("PremiumDialogTheme", "style", getPackageName());
+        android.app.AlertDialog.Builder builder = (themeId != 0) ? 
+            new android.app.AlertDialog.Builder(this, themeId) : 
+            new android.app.AlertDialog.Builder(this);
+            
+        builder.setTitle(TvUtil.translate(this, "تبديل صيغة البث"));
+        builder.setSingleChoiceItems(items, selectedIndex, new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                String selectedKey = keys[which];
+                sp.edit().putString("stream_format", selectedKey).apply();
+
+                String newUrl = videoUrl;
+                if ("m3u8".equalsIgnoreCase(selectedKey)) {
+                    if (newUrl.contains(".ts")) {
+                        newUrl = newUrl.replace(".ts", ".m3u8");
+                    }
+                } else if ("ts".equalsIgnoreCase(selectedKey)) {
+                    if (newUrl.contains(".m3u8")) {
+                        newUrl = newUrl.replace(".m3u8", ".ts");
+                    }
+                } else if ("auto".equalsIgnoreCase(selectedKey)) {
+                    if (newUrl.contains(".ts")) {
+                        newUrl = newUrl.replace(".ts", ".m3u8");
+                    }
+                }
+
+                videoUrl = newUrl;
+                Toast.makeText(PlayerActivity.this, TvUtil.translate(PlayerActivity.this, "تم التبديل بنجاح إلى: ") + items[which], Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+
+                long currentPos = 0;
+                if (exoPlayer != null) {
+                    currentPos = exoPlayer.getCurrentPosition();
+                    exoPlayer.stop();
+                    exoPlayer.clearMediaItems();
+                }
+                attemptedMimeType = null;
+                MediaSource src = buildMediaSource(newUrl);
+                if (exoPlayer != null) {
+                    exoPlayer.setMediaSource(src);
+                    if (currentPos > 0 && !newUrl.contains("live")) {
+                        exoPlayer.seekTo(currentPos);
+                    }
+                    exoPlayer.prepare();
+                    exoPlayer.setPlayWhenReady(true);
+                }
+            }
+        });
+        builder.setNegativeButton(TvUtil.translate(this, "إلغاء"), null);
+        builder.show();
     }
 
     private void showSpeedDialog() {

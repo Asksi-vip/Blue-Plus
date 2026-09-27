@@ -226,7 +226,10 @@ public class SettingsActivity extends Activity {
         items.add(new SettingItem("اختيار المشغل الافتراضي", useExternal ? "مشغل خارجي" : "المشغل المدمج", R.drawable.ic_settings_player, new View.OnClickListener() {
             @Override public void onClick(View v) { changePlayerAction(); }
         }));
-        items.add(new SettingItem("تنسيق البث المباشر", "الصيغة: " + streamFormat.toUpperCase(), R.drawable.ic_settings_movie, new View.OnClickListener() {
+        String formatDisplay = "تلقائي ذكي (M3U8 / TS)";
+        if ("m3u8".equalsIgnoreCase(streamFormat)) formatDisplay = "HLS (.M3U8) حديث";
+        else if ("ts".equalsIgnoreCase(streamFormat)) formatDisplay = "MPEG-TS (.TS) كلاسيكي";
+        items.add(new SettingItem("تنسيق البث المباشر", formatDisplay, R.drawable.ic_settings_movie, new View.OnClickListener() {
             @Override public void onClick(View v) { liveStreamFormatAction(); }
         }));
 
@@ -833,9 +836,14 @@ public class SettingsActivity extends Activity {
 
     private void liveStreamFormatAction() {
         final String[] items = {
-                TvUtil.translate(this, "تلقائي (مستحسن)"),
-                TvUtil.translate(this, "MPEG-TS (.ts)"),
-                TvUtil.translate(this, "HLS (.m3u8)")
+                TvUtil.translate(this, "تلقائي ذكي (Smart Auto - التحديث الجديد)"),
+                TvUtil.translate(this, "HLS (.m3u8) - البث التكيفي الحديث"),
+                TvUtil.translate(this, "MPEG-TS (.ts) - البث الكلاسيكي المباشر")
+        };
+        final String[] descs = {
+                TvUtil.translate(this, "يبدأ بصيغة HLS التكيفية مع تحويل تلقائي فوري إلى TS في حال التقطيع"),
+                TvUtil.translate(this, "متوافق كلياً مع المشغل المحدث، استهلاك أقل للبيانات وسرعة تشغيل عالية"),
+                TvUtil.translate(this, "التنسيق القياسي الخام للاتصال المباشر بالسيرفر")
         };
         final SharedPreferences sp = getSharedPreferences("Settings", MODE_PRIVATE);
         String current = sp.getString("stream_format", "auto");
@@ -846,20 +854,32 @@ public class SettingsActivity extends Activity {
 
         final RadioGroup rg = new RadioGroup(this);
         for (int i = 0; i < items.length; i++) {
+            LinearLayout itemRow = new LinearLayout(this);
+            itemRow.setOrientation(LinearLayout.VERTICAL);
+            itemRow.setPadding(0, (int)(4 * scale), 0, (int)(8 * scale));
+
             RadioButton rb = new RadioButton(this);
             rb.setText(items[i]);
             rb.setTextColor(Color.WHITE);
             rb.setTextSize(13);
+            rb.setTypeface(null, Typeface.BOLD);
             rb.setId(i);
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 rb.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor(ACCENT_BLUE)));
             }
-            if ((i == 0 && current.equals("auto")) || (i == 1 && current.equals("ts")) || (i == 2 && current.equals("m3u8"))) {
+            if ((i == 0 && current.equals("auto")) || (i == 1 && current.equals("m3u8")) || (i == 2 && current.equals("ts"))) {
                 rb.setChecked(true);
             }
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-            lp.bottomMargin = (int) (8 * scale);
-            rg.addView(rb, lp);
+            itemRow.addView(rb);
+
+            TextView descView = new TextView(this);
+            descView.setText(descs[i]);
+            descView.setTextColor(Color.parseColor("#99FFFFFF"));
+            descView.setTextSize(11);
+            descView.setPadding((int)(32 * scale), 0, (int)(8 * scale), 0);
+            itemRow.addView(descView);
+
+            rg.addView(itemRow);
         }
         container.addView(rg);
 
@@ -868,16 +888,16 @@ public class SettingsActivity extends Activity {
             public void run() {
                 int selectedId = rg.getCheckedRadioButtonId();
                 String val = "auto";
-                String name = "تلقائي";
+                String name = "تلقائي ذكي";
                 if (selectedId == 1) {
-                    val = "ts";
-                    name = "MPEG-TS";
-                } else if (selectedId == 2) {
                     val = "m3u8";
-                    name = "m3u8";
+                    name = "HLS (.m3u8)";
+                } else if (selectedId == 2) {
+                    val = "ts";
+                    name = "MPEG-TS (.ts)";
                 }
                 sp.edit().putString("stream_format", val).apply();
-                Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم تعيين تنسيق البث بنجاح إلى: ") + name, Toast.LENGTH_SHORT).show();
+                Toast.makeText(SettingsActivity.this, TvUtil.translate(SettingsActivity.this, "تم تفعيل التنسيق بنجاح: ") + name + "\n" + TvUtil.translate(SettingsActivity.this, "يدعم التحديث الجديد مع المشغل المطور"), Toast.LENGTH_SHORT).show();
                 recreate();
             }
         }, TvUtil.translate(this, "إلغاء"), null);
