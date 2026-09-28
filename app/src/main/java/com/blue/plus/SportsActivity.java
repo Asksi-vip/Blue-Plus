@@ -21,9 +21,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.graphics.PorterDuff;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -78,11 +80,11 @@ public class SportsActivity extends Activity {
     };
 
     private static final String[] YACINE_EVENT_DETAIL_URLS = {
-        "http://tv.yacinelive.com/api/event/",
-        "https://def.yacinelive.com/api/event/",
         "https://a2.apk-api.com/api/event/",
-        "https://def.yacinelive.com/api/events",
-        "http://tv.yacinelive.com/api/events"
+        "https://def.yacinelive.com/api/event/",
+        "http://tv.yacinelive.com/api/event/",
+        "https://apk-api.com/api/event/",
+        "http://def.yacinelive.com/api/event/"
     };
 
     private static final String OVERRIDES_URL = "https://blueplus-auz.pages.dev/sports_overrides.json";
@@ -333,7 +335,7 @@ public class SportsActivity extends Activity {
 
     // ── Native In-App Yacine TV Decryption (Direct, Zero External Proxies) ──
 
-    private static JSONObject fetchAndDecryptYacine(String urlStr) {
+    private static String fetchAndDecryptYacineRaw(String urlStr) {
         try {
             URL url = new URL(urlStr);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -373,13 +375,80 @@ public class SportsActivity extends Activity {
                     }
 
                     String decryptedJson = new String(out, "UTF-8");
-                    return new JSONObject(decryptedJson);
+                    return decryptedJson.replace("\\/", "/").trim();
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "fetchAndDecryptYacine failed for " + urlStr + ": " + e.getMessage());
+            Log.e(TAG, "fetchAndDecryptYacineRaw failed for " + urlStr + ": " + e.getMessage());
         }
         return null;
+    }
+
+    private static JSONObject fetchAndDecryptYacine(String urlStr) {
+        String raw = fetchAndDecryptYacineRaw(urlStr);
+        if (raw != null && raw.startsWith("{")) {
+            try {
+                return new JSONObject(raw);
+            } catch (Exception ignored) {}
+        }
+        return null;
+    }
+
+    private static List<MatchStream> parseStreamsFromJsonString(String rawJson) {
+        List<MatchStream> result = new ArrayList<>();
+        if (rawJson == null || rawJson.trim().isEmpty()) return result;
+        try {
+            rawJson = rawJson.trim();
+            JSONArray arr = null;
+            if (rawJson.startsWith("[")) {
+                arr = new JSONArray(rawJson);
+            } else if (rawJson.startsWith("{")) {
+                JSONObject obj = new JSONObject(rawJson);
+                if (obj.has("data")) arr = obj.optJSONArray("data");
+                else if (obj.has("streams")) arr = obj.optJSONArray("streams");
+                else if (obj.has("التدفقات")) arr = obj.optJSONArray("التدفقات");
+            }
+            if (arr != null) {
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject item = arr.optJSONObject(i);
+                    if (item != null) {
+                        String url = item.optString("url", "").trim();
+                        if (url.isEmpty()) continue;
+
+                        MatchStream stream = new MatchStream();
+                        stream.url = url;
+                        stream.name = item.optString("name", item.optString("الاسم", "سيرفر " + (i + 1)));
+
+                        // Extract user-agent
+                        String ua = item.optString("user_agent", item.optString("user-agent", ""));
+                        if (ua.isEmpty() && (item.has("headers") || item.has("العناوين"))) {
+                            JSONObject h = item.optJSONObject("headers");
+                            if (h == null) h = item.optJSONObject("العناوين");
+                            if (h != null) {
+                                ua = h.optString("User-Agent", h.optString("user_agent", h.optString("user-agent", "")));
+                            }
+                        }
+                        stream.userAgent = ua;
+
+                        // Extract referer
+                        String ref = item.optString("referer", item.optString("المُحيل", ""));
+                        if (ref.isEmpty() && (item.has("headers") || item.has("العناوين"))) {
+                            JSONObject h = item.optJSONObject("headers");
+                            if (h == null) h = item.optJSONObject("العناوين");
+                            if (h != null) {
+                                ref = h.optString("Referer", h.optString("referer", h.optString("المُحيل", "")));
+                            }
+                        }
+                        stream.referer = ref;
+
+                        result.add(stream);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing streams from JSON: " + e.getMessage());
+        }
+        return result;
     }
 
     private void fetchFixturesAsync() {
@@ -529,24 +598,7 @@ public class SportsActivity extends Activity {
                                 fixture.score = "LIVE";
                             }
 
-                            // 3. Fetch event details containing stream qualities directly with fallback endpoints
-                            JSONArray origStreamArr = null;
-                            for (String detailBase : YACINE_EVENT_DETAIL_URLS) {
-                                String detailUrl = detailBase + matchId;
-                                JSONObject eventDetail = fetchAndDecryptYacine(detailUrl);
-                                if (eventDetail != null) {
-                                    if (eventDetail.has("data")) {
-                                        origStreamArr = eventDetail.optJSONArray("data");
-                                    } else if (eventDetail.has("التدفقات")) {
-                                        origStreamArr = eventDetail.optJSONArray("التدفقات");
-                                    } else if (eventDetail.has("streams")) {
-                                        origStreamArr = eventDetail.optJSONArray("streams");
-                                    }
-                                    if (origStreamArr != null && origStreamArr.length() > 0) break;
-                                }
-                            }
-
-                            // 4. Parse custom overrides streams first
+                            // 3. Parse custom overrides streams if present
                             if (override != null) {
                                 try {
                                     JSONArray customStreamArr = override.optJSONArray("streams");
@@ -554,73 +606,13 @@ public class SportsActivity extends Activity {
                                         customStreamArr = override.optJSONArray("التدفقات");
                                     }
                                     if (customStreamArr != null) {
-                                        for (int j = 0; j < customStreamArr.length(); j++) {
-                                            JSONObject sobj = customStreamArr.optJSONObject(j);
-                                            if (sobj != null) {
-                                                MatchStream stream = new MatchStream();
-                                                stream.name = sobj.has("الاسم") ? sobj.optString("الاسم", "بث") : (sobj.has("name") ? sobj.optString("name", "بث") : "بث");
-                                                stream.url = sobj.optString("url", "").trim();
-                                                stream.userAgent = sobj.has("user_agent") ? sobj.optString("user_agent", "") : (sobj.has("user-agent") ? sobj.optString("user-agent", "") : "");
-                                                if (stream.userAgent.isEmpty() && (sobj.has("headers") || sobj.has("العناوين"))) {
-                                                    JSONObject headers = sobj.optJSONObject("headers");
-                                                    if (headers == null) headers = sobj.optJSONObject("العناوين");
-                                                    if (headers != null) {
-                                                        stream.userAgent = headers.optString("User-Agent", headers.optString("user_agent", headers.optString("user-agent", "")));
-                                                    }
-                                                }
-                                                stream.referer = sobj.has("المُحيل") ? sobj.optString("المُحيل", "") : (sobj.has("referer") ? sobj.optString("referer", "") : "");
-                                                if (stream.referer.isEmpty() && (sobj.has("headers") || sobj.has("العناوين"))) {
-                                                    JSONObject headers = sobj.optJSONObject("headers");
-                                                    if (headers == null) headers = sobj.optJSONObject("العناوين");
-                                                    if (headers != null) {
-                                                        stream.referer = headers.optString("Referer", headers.optString("referer", headers.optString("المُحيل", "")));
-                                                    }
-                                                }
-                                                fixture.streams.add(stream);
-                                            }
+                                        List<MatchStream> parsedCustom = parseStreamsFromJsonString(customStreamArr.toString());
+                                        if (parsedCustom != null && !parsedCustom.isEmpty()) {
+                                            fixture.streams.addAll(parsedCustom);
                                         }
                                     }
                                 } catch (Exception ex) {
                                     Log.e(TAG, "Failed parsing overrides streams: " + ex.getMessage());
-                                }
-                            }
-
-                            // 5. Parse original streams from Yacine TV if no custom streams are present
-                            if (origStreamArr != null && fixture.streams.isEmpty()) {
-                                for (int j = 0; j < origStreamArr.length(); j++) {
-                                    JSONObject sobj = origStreamArr.optJSONObject(j);
-                                    if (sobj != null) {
-                                        String origUrl = sobj.optString("url", "").trim();
-                                        boolean exists = false;
-                                        for (MatchStream s : fixture.streams) {
-                                            if (s.url != null && s.url.equals(origUrl)) {
-                                                exists = true;
-                                                break;
-                                            }
-                                        }
-                                        if (!exists && !origUrl.isEmpty()) {
-                                            MatchStream stream = new MatchStream();
-                                            stream.name = sobj.has("الاسم") ? sobj.optString("الاسم", "بث") : (sobj.has("name") ? sobj.optString("name", "بث") : "بث");
-                                            stream.url = origUrl;
-                                            stream.userAgent = sobj.has("user_agent") ? sobj.optString("user_agent", "") : (sobj.has("user-agent") ? sobj.optString("user-agent", "") : "");
-                                            if (stream.userAgent.isEmpty() && (sobj.has("headers") || sobj.has("العناوين"))) {
-                                                JSONObject headers = sobj.optJSONObject("headers");
-                                                if (headers == null) headers = sobj.optJSONObject("العناوين");
-                                                if (headers != null) {
-                                                    stream.userAgent = headers.optString("User-Agent", headers.optString("user_agent", headers.optString("user-agent", "")));
-                                                }
-                                            }
-                                            stream.referer = sobj.has("المُحيل") ? sobj.optString("المُحيل", "") : (sobj.has("referer") ? sobj.optString("referer", "") : "");
-                                            if (stream.referer.isEmpty() && (sobj.has("headers") || sobj.has("العناوين"))) {
-                                                JSONObject headers = sobj.optJSONObject("headers");
-                                                if (headers == null) headers = sobj.optJSONObject("العناوين");
-                                                if (headers != null) {
-                                                    stream.referer = headers.optString("Referer", headers.optString("referer", headers.optString("المُحيل", "")));
-                                                }
-                                            }
-                                            fixture.streams.add(stream);
-                                        }
-                                    }
                                 }
                             }
 
@@ -1030,6 +1022,13 @@ public class SportsActivity extends Activity {
             tvWatch.setBackground(watchBg);
             leftSec.addView(tvWatch);
         }
+        tvWatch.setClickable(true);
+        tvWatch.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                fetchEventServersAndPlay(match);
+            }
+        });
 
         card.addView(leftSec);
 
@@ -1037,13 +1036,7 @@ public class SportsActivity extends Activity {
         card.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!match.streams.isEmpty()) {
-                    showStreamsQualityDialog(match);
-                } else if (match.status.equals("UPCOMING")) {
-                    toggleMatchReminder(match);
-                } else {
-                    playMatchChannel(match.channel);
-                }
+                fetchEventServersAndPlay(match);
             }
         });
 
@@ -1116,7 +1109,229 @@ public class SportsActivity extends Activity {
         filterFixtures(currentFilter);
     }
 
-    // ── Apple iOS Liquid Glass Streams Quality Dialog ──
+    // ── Apple iOS Liquid Glass Streams & Servers Resolution ──
+
+    private void fetchEventServersAndPlay(final MatchFixture match) {
+        if (match == null) return;
+
+        // If streams are already present, show dialog immediately
+        if (match.streams != null && !match.streams.isEmpty()) {
+            if (match.streams.size() == 1) {
+                playDirectStream(match.streams.get(0), match.team1 + " vs " + match.team2);
+            } else {
+                showStreamsQualityDialog(match);
+            }
+            return;
+        }
+
+        // Check if event ID exists to fetch from API
+        final String matchId = (match.id != null) ? match.id.trim() : "";
+        if (matchId.isEmpty()) {
+            if (match.status.equals("UPCOMING")) {
+                toggleMatchReminder(match);
+            } else {
+                showFallbackChannelPrompt(match);
+            }
+            return;
+        }
+
+        float scale = getResources().getDisplayMetrics().density;
+        final Dialog progressDialog = new Dialog(this);
+        progressDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER);
+        card.setPadding((int) (26 * scale), (int) (22 * scale), (int) (26 * scale), (int) (22 * scale));
+
+        GradientDrawable gd = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.parseColor("#F50B101C"), Color.parseColor("#F50D1526")}
+        );
+        gd.setCornerRadius(20 * scale);
+        gd.setStroke((int) (1.5f * scale), Color.parseColor("#400A84FF"));
+        card.setBackground(gd);
+
+        ProgressBar pb = new ProgressBar(this);
+        try {
+            pb.getIndeterminateDrawable().setColorFilter(Color.parseColor("#0A84FF"), PorterDuff.Mode.SRC_IN);
+        } catch (Exception ignored) {}
+        card.addView(pb);
+
+        TextView tvLoading = new TextView(this);
+        tvLoading.setText(TvUtil.translate(this, "جاري فحص سيرفرات البث المباشر..."));
+        tvLoading.setTextColor(Color.WHITE);
+        tvLoading.setTextSize(14);
+        tvLoading.setTypeface(null, Typeface.BOLD);
+        tvLoading.setGravity(Gravity.CENTER);
+        tvLoading.setPadding(0, (int) (14 * scale), 0, 0);
+        card.addView(tvLoading);
+
+        TextView tvSub = new TextView(this);
+        tvSub.setText(match.team1 + "  VS  " + match.team2);
+        tvSub.setTextColor(Color.parseColor("#8A99AD"));
+        tvSub.setTextSize(11.5f);
+        tvSub.setGravity(Gravity.CENTER);
+        tvSub.setPadding(0, (int) (4 * scale), 0, 0);
+        card.addView(tvSub);
+
+        progressDialog.setContentView(card);
+        if (progressDialog.getWindow() != null) {
+            progressDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            progressDialog.getWindow().setLayout(Math.min((int) (360 * scale), (int) (screenWidth * 0.85f)), -2);
+        }
+        progressDialog.setCancelable(true);
+        progressDialog.show();
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final List<MatchStream> fetchedStreams = new ArrayList<>();
+                for (String detailBase : YACINE_EVENT_DETAIL_URLS) {
+                    if (detailBase.endsWith("/")) {
+                        String detailUrl = detailBase + matchId;
+                        String rawJson = fetchAndDecryptYacineRaw(detailUrl);
+                        if (rawJson != null && !rawJson.isEmpty()) {
+                            List<MatchStream> parsed = parseStreamsFromJsonString(rawJson);
+                            if (parsed != null && !parsed.isEmpty()) {
+                                fetchedStreams.addAll(parsed);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            if (progressDialog.isShowing()) {
+                                progressDialog.dismiss();
+                            }
+                        } catch (Exception ignored) {}
+
+                        if (!fetchedStreams.isEmpty()) {
+                            match.streams.clear();
+                            match.streams.addAll(fetchedStreams);
+                            if (match.streams.size() == 1) {
+                                playDirectStream(match.streams.get(0), match.team1 + " vs " + match.team2);
+                            } else {
+                                showStreamsQualityDialog(match);
+                            }
+                        } else {
+                            if (match.status.equals("UPCOMING")) {
+                                toggleMatchReminder(match);
+                            } else {
+                                showFallbackChannelPrompt(match);
+                            }
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void showFallbackChannelPrompt(final MatchFixture match) {
+        float scale = getResources().getDisplayMetrics().density;
+        final Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding((int) (22 * scale), (int) (18 * scale), (int) (22 * scale), (int) (18 * scale));
+
+        GradientDrawable gd = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.parseColor("#F50B101C"), Color.parseColor("#F50D1526")}
+        );
+        gd.setCornerRadius(20 * scale);
+        gd.setStroke((int) (1.5f * scale), Color.parseColor("#400A84FF"));
+        container.setBackground(gd);
+
+        TextView tvTitle = new TextView(this);
+        tvTitle.setText(TvUtil.translate(this, "سيرفرات البث المباشر"));
+        tvTitle.setTextColor(Color.parseColor(ACCENT_CYAN));
+        tvTitle.setTextSize(16);
+        tvTitle.setTypeface(null, Typeface.BOLD);
+        tvTitle.setGravity(Gravity.CENTER);
+        container.addView(tvTitle);
+
+        TextView tvMsg = new TextView(this);
+        String channelInfo = (match.channel != null && !match.channel.trim().isEmpty()) ? match.channel : TvUtil.translate(this, "غير محددة");
+        tvMsg.setText(TvUtil.translate(this, "لم تتوفر سيرفرات بث مباشر رسمية في الـ API لهذه المباراة حالياً.\nالقناة الناقلة: ") + channelInfo);
+        tvMsg.setTextColor(Color.parseColor("#8A99AD"));
+        tvMsg.setTextSize(12.5f);
+        tvMsg.setGravity(Gravity.CENTER);
+        tvMsg.setPadding(0, (int) (10 * scale), 0, (int) (16 * scale));
+        container.addView(tvMsg);
+
+        if (match.channel != null && !match.channel.trim().isEmpty()) {
+            TextView btnPlayChannel = new TextView(this);
+            btnPlayChannel.setText(TvUtil.translate(this, "🔍 تشغيل من قائمة قنوات التطبيق (") + match.channel + ")");
+            btnPlayChannel.setTextColor(Color.WHITE);
+            btnPlayChannel.setTextSize(13);
+            btnPlayChannel.setTypeface(null, Typeface.BOLD);
+            btnPlayChannel.setGravity(Gravity.CENTER);
+            btnPlayChannel.setPadding((int) (16 * scale), (int) (10 * scale), (int) (16 * scale), (int) (10 * scale));
+            btnPlayChannel.setClickable(true);
+            btnPlayChannel.setFocusable(true);
+
+            GradientDrawable playBg = new GradientDrawable();
+            playBg.setColor(Color.parseColor("#E60A84FF"));
+            playBg.setCornerRadius(12 * scale);
+            playBg.setStroke((int) (1.2f * scale), Color.parseColor("#40C4FF"));
+            btnPlayChannel.setBackground(playBg);
+
+            LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams(-1, -2);
+            playLp.bottomMargin = (int) (8 * scale);
+            btnPlayChannel.setLayoutParams(playLp);
+
+            btnPlayChannel.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    dialog.dismiss();
+                    playMatchChannel(match.channel);
+                }
+            });
+            TvUtil.applyTvFocusHighlight(btnPlayChannel, 12.0f);
+            container.addView(btnPlayChannel);
+        }
+
+        TextView btnClose = new TextView(this);
+        btnClose.setText(TvUtil.translate(this, "إغلاق"));
+        btnClose.setTextColor(Color.parseColor("#B0BEC5"));
+        btnClose.setTextSize(13);
+        btnClose.setTypeface(null, Typeface.BOLD);
+        btnClose.setGravity(Gravity.CENTER);
+        btnClose.setPadding((int) (16 * scale), (int) (8 * scale), (int) (16 * scale), (int) (8 * scale));
+        btnClose.setClickable(true);
+        btnClose.setFocusable(true);
+
+        GradientDrawable closeBg = new GradientDrawable();
+        closeBg.setColor(Color.parseColor("#1AFFFFFF"));
+        closeBg.setCornerRadius(12 * scale);
+        closeBg.setStroke((int) (1.2f * scale), Color.parseColor("#26FFFFFF"));
+        btnClose.setBackground(closeBg);
+
+        btnClose.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        TvUtil.applyTvFocusHighlight(btnClose, 12.0f);
+        container.addView(btnClose);
+
+        dialog.setContentView(container);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            int dialogWidth = Math.min((int) (400 * scale), (int) (screenWidth * 0.85f));
+            dialog.getWindow().setLayout(dialogWidth, -2);
+        }
+        dialog.show();
+    }
 
     private void showStreamsQualityDialog(final MatchFixture match) {
         float scale = getResources().getDisplayMetrics().density;
@@ -1130,7 +1345,7 @@ public class SportsActivity extends Activity {
 
         GradientDrawable gd = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{Color.parseColor("#F20B101C"), Color.parseColor("#F20D1526")}
+                new int[]{Color.parseColor("#F50B101C"), Color.parseColor("#F50D1526")}
         );
         gd.setCornerRadius(20 * scale);
         gd.setStroke((int) (1.5f * scale), Color.parseColor("#400A84FF"));
@@ -1166,12 +1381,22 @@ public class SportsActivity extends Activity {
 
         for (final MatchStream stream : match.streams) {
             TextView btnStream = new TextView(this);
-            btnStream.setText("▶ " + stream.name);
+            String displayName = stream.name != null ? stream.name.trim() : "بث";
+            if (displayName.equalsIgnoreCase("HD")) {
+                displayName = "🔥 HD (جودة عالية)";
+            } else if (displayName.equalsIgnoreCase("SD")) {
+                displayName = "⚡ SD (جودة متوسطة)";
+            } else if (displayName.equalsIgnoreCase("Low")) {
+                displayName = "📱 Low (جودة ضعيفة / إنترنت بطيء)";
+            } else {
+                displayName = "▶ " + displayName;
+            }
+            btnStream.setText(displayName);
             btnStream.setTextColor(Color.WHITE);
             btnStream.setTextSize(13);
             btnStream.setTypeface(null, Typeface.BOLD);
             btnStream.setGravity(Gravity.CENTER);
-            btnStream.setPadding((int) (16 * scale), (int) (10 * scale), (int) (16 * scale), (int) (10 * scale));
+            btnStream.setPadding((int) (16 * scale), (int) (11 * scale), (int) (16 * scale), (int) (11 * scale));
             btnStream.setClickable(true);
             btnStream.setFocusable(true);
 
@@ -1189,7 +1414,7 @@ public class SportsActivity extends Activity {
                 @Override
                 public void onClick(View v) {
                     dialog.dismiss();
-                    playDirectStream(stream, match.team1 + " vs " + match.team2);
+                    playDirectStream(stream, match.team1 + " vs " + match.team2 + " (" + stream.name + ")");
                 }
             });
             TvUtil.applyTvFocusHighlight(btnStream, 12.0f);
