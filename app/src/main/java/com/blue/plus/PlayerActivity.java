@@ -3036,42 +3036,120 @@ public class PlayerActivity extends Activity {
 
     private void showQuickMediaSelector(final float scale) {
         final List<String[]> categoriesList = new ArrayList<>();
-        
         final boolean isSeries = (videoUrl != null && videoUrl.contains("/series/"));
 
-        // 1. Current Series Episodes
+        // 1. Current Series Episodes (strictly if available)
         if (isSeries && SeriesepisodesActivity.cachedEpisodes != null && !SeriesepisodesActivity.cachedEpisodes.isEmpty()) {
+            String titleLabel = SeriesepisodesActivity.cachedSeriesName != null && !SeriesepisodesActivity.cachedSeriesName.isEmpty()
+                    ? "حلقات: " + SeriesepisodesActivity.cachedSeriesName
+                    : "حلقات المسلسل الحالي";
             categoriesList.add(new String[] { 
                 "EPISODES", 
-                "حلقات: " + SeriesepisodesActivity.cachedSeriesName, 
+                titleLabel, 
                 String.valueOf(SeriesepisodesActivity.cachedEpisodes.size()) 
             });
         }
         
-        // 2. Content Categories (Only for Movies!)
-        if (!isSeries) {
-            List<SeriesActivity.SeriesItem> sourceItems = SeriesActivity.cachedMovies;
-            Map<String, String> sourceIdToName = SeriesActivity.cachedMoviesIdToName;
-            
-            if (sourceItems != null) {
-                if (sourceIdToName != null) {
-                    for (Map.Entry<String, String> entry : sourceIdToName.entrySet()) {
-                        String catId = entry.getKey();
-                        int count = 0;
-                        for (SeriesActivity.SeriesItem m : sourceItems) {
-                            if (catId.equals(m.category)) count++;
+        // 2. Content Categories (Series or Movies)
+        List<SeriesActivity.SeriesItem> sourceItems = isSeries ? SeriesActivity.cachedSeries : SeriesActivity.cachedMovies;
+        Map<String, String> sourceIdToName = isSeries ? SeriesActivity.cachedSeriesIdToName : SeriesActivity.cachedMoviesIdToName;
+        Map<String, Integer> sourceCounts = isSeries ? SeriesActivity.cachedSeriesCounts : SeriesActivity.cachedMoviesCounts;
+
+        // If in-memory cache is null, try to load from offline json in background/sync
+        if (sourceItems == null || sourceItems.isEmpty()) {
+            try {
+                File f = new File(getExternalFilesDir(null), isSeries ? "xtream_series.json" : "xtream_vod.json");
+                if (f.exists()) {
+                    List<SeriesActivity.SeriesItem> diskList = new ArrayList<>();
+                    Map<String, Integer> diskCounts = new java.util.LinkedHashMap<>();
+                    Map<String, String> diskIdToName = new java.util.LinkedHashMap<>();
+                    try (com.google.gson.stream.JsonReader reader = new com.google.gson.stream.JsonReader(new java.io.InputStreamReader(new java.io.FileInputStream(f), "UTF-8"))) {
+                        reader.beginObject();
+                        while (reader.hasNext()) {
+                            String k = reader.nextName();
+                            if (k.equals(isSeries ? "get_series_categories" : "get_vod_categories")) {
+                                reader.beginArray();
+                                while (reader.hasNext()) {
+                                    reader.beginObject();
+                                    String id = "", name = "";
+                                    while (reader.hasNext()) {
+                                        String field = reader.nextName();
+                                        if (field.equals("category_id")) id = reader.nextString();
+                                        else if (field.equals("category_name")) name = reader.nextString();
+                                        else reader.skipValue();
+                                    }
+                                    reader.endObject();
+                                    if (!id.isEmpty() && !name.isEmpty()) diskIdToName.put(id, name);
+                                }
+                                reader.endArray();
+                            } else if (k.equals(isSeries ? "get_series" : "get_vod_streams")) {
+                                reader.beginArray();
+                                while (reader.hasNext()) {
+                                    reader.beginObject();
+                                    String name = "", cover = "", catId = "", streamId = "", ext = "mp4";
+                                    while (reader.hasNext()) {
+                                        String field = reader.nextName();
+                                        if (field.equals("name")) name = reader.nextString();
+                                        else if (field.equals("cover") || field.equals("stream_icon")) cover = reader.nextString();
+                                        else if (field.equals("category_id")) catId = reader.nextString();
+                                        else if (field.equals("series_id") || field.equals("stream_id")) streamId = reader.nextString();
+                                        else if (field.equals("container_extension")) ext = reader.nextString();
+                                        else reader.skipValue();
+                                    }
+                                    reader.endObject();
+                                    String catName = diskIdToName.get(catId);
+                                    if (catName == null || catName.isEmpty()) catName = "General";
+                                    Integer c = diskCounts.get(catName);
+                                    diskCounts.put(catName, (c == null ? 0 : c) + 1);
+                                    SeriesActivity.SeriesItem it = new SeriesActivity.SeriesItem(0, name, cover, "", "", "", "", "", "", catName, streamId);
+                                    it.containerExtension = ext;
+                                    diskList.add(it);
+                                }
+                                reader.endArray();
+                            } else {
+                                reader.skipValue();
+                            }
                         }
-                        categoriesList.add(new String[] { catId, entry.getValue(), String.valueOf(count) });
+                        reader.endObject();
                     }
-                } else {
-                    java.util.Map<String, Integer> countMap = new java.util.HashMap<>();
-                    for (SeriesActivity.SeriesItem m : sourceItems) {
-                        if (m.category != null) {
-                            int c = countMap.containsKey(m.category) ? countMap.get(m.category) : 0;
-                            countMap.put(m.category, c + 1);
+                    if (!diskList.isEmpty()) {
+                        sourceItems = diskList;
+                        sourceCounts = diskCounts;
+                        sourceIdToName = diskIdToName;
+                        if (isSeries) {
+                            SeriesActivity.cachedSeries = diskList;
+                            SeriesActivity.cachedSeriesCounts = diskCounts;
+                            SeriesActivity.cachedSeriesIdToName = diskIdToName;
+                        } else {
+                            SeriesActivity.cachedMovies = diskList;
+                            SeriesActivity.cachedMoviesCounts = diskCounts;
+                            SeriesActivity.cachedMoviesIdToName = diskIdToName;
                         }
                     }
-                    for (Map.Entry<String, Integer> entry : countMap.entrySet()) {
+                }
+            } catch (Exception ignored) {}
+        }
+        
+        if (sourceItems != null && !sourceItems.isEmpty()) {
+            java.util.Map<String, Integer> verifiedCounts = new java.util.LinkedHashMap<>();
+            for (SeriesActivity.SeriesItem m : sourceItems) {
+                if (m.category != null && !m.category.isEmpty()) {
+                    Integer c = verifiedCounts.get(m.category);
+                    verifiedCounts.put(m.category, (c == null ? 0 : c) + 1);
+                }
+            }
+
+            if (sourceIdToName != null && !sourceIdToName.isEmpty()) {
+                for (Map.Entry<String, String> entry : sourceIdToName.entrySet()) {
+                    String catName = entry.getValue();
+                    Integer count = verifiedCounts.get(catName);
+                    if (count != null && count > 0) { // STRICT FILTER: Never show 0 items!
+                        categoriesList.add(new String[] { catName, catName, String.valueOf(count) });
+                    }
+                }
+            } else {
+                for (Map.Entry<String, Integer> entry : verifiedCounts.entrySet()) {
+                    if (entry.getValue() > 0) { // STRICT FILTER: Never show 0 items!
                         categoriesList.add(new String[] { entry.getKey(), entry.getKey(), String.valueOf(entry.getValue()) });
                     }
                 }
@@ -3079,50 +3157,51 @@ public class PlayerActivity extends Activity {
         }
 
         if (categoriesList.isEmpty()) {
-            Toast.makeText(this, "لا توجد أفلام أو حلقات لعرضها", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, isSeries ? "لا توجد مسلسلات أو حلقات لعرضها" : "لا توجد أفلام لعرضها", Toast.LENGTH_SHORT).show();
             return;
         }
 
         final Dialog d = new Dialog(this, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen);
         
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(0x88000000); // Sleek darkened overlay
+        root.setBackgroundColor(0x99000000); // Frosted darkened glass overlay
         root.setFocusable(false);
         
         LinearLayout drawer = new LinearLayout(this);
         drawer.setOrientation(LinearLayout.VERTICAL);
         
-        // Premium glassmorphic obsidian/blue receiver drawer background
+        // Apple iOS Liquid Glass Navigation Drawer
         android.graphics.drawable.GradientDrawable drawerBg = new android.graphics.drawable.GradientDrawable(
-            android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-            new int[] { Color.parseColor("#F90A0B0E"), Color.parseColor("#F2121319") }
+            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[] { Color.parseColor("#F50B101C"), Color.parseColor("#F50D1526") }
         );
-        float r = 28 * scale;
-        drawerBg.setCornerRadii(new float[]{ 0, 0, r, r, r, r, 0, 0 }); // round right corners
+        float r = 24 * scale;
+        drawerBg.setCornerRadii(new float[]{ 0, 0, r, r, r, r, 0, 0 }); // Round right side corners
+        drawerBg.setStroke((int)(1.2f * scale), Color.parseColor("#3380B4FF")); // Specular cyan border
         drawer.setBackground(drawerBg);
         
-        FrameLayout.LayoutParams drawerLp = new FrameLayout.LayoutParams((int)(430 * scale), FrameLayout.LayoutParams.MATCH_PARENT, Gravity.LEFT);
+        FrameLayout.LayoutParams drawerLp = new FrameLayout.LayoutParams((int)(440 * scale), FrameLayout.LayoutParams.MATCH_PARENT, Gravity.LEFT);
         drawer.setLayoutParams(drawerLp);
-        drawer.setPadding((int)(16 * scale), (int)(24 * scale), (int)(16 * scale), (int)(24 * scale));
+        drawer.setPadding((int)(16 * scale), (int)(20 * scale), (int)(16 * scale), (int)(20 * scale));
         drawer.setFocusable(false);
         
-        // GORGEOUS SATELLITE/TV HEADER WITH CLOCK
+        // Liquid Glass Header with Icon & Live Clock
         LinearLayout headerLayout = new LinearLayout(this);
         headerLayout.setOrientation(LinearLayout.HORIZONTAL);
         headerLayout.setGravity(Gravity.CENTER_VERTICAL);
-        headerLayout.setPadding((int)(8 * scale), 0, (int)(8 * scale), (int)(12 * scale));
+        headerLayout.setPadding((int)(8 * scale), 0, (int)(8 * scale), (int)(10 * scale));
         headerLayout.setFocusable(false);
         
         FrameLayout iconContainer = new FrameLayout(this);
-        int containerSize = (int)(38 * scale);
+        int containerSize = (int)(40 * scale);
         LinearLayout.LayoutParams iconContainerLp = new LinearLayout.LayoutParams(containerSize, containerSize);
-        iconContainerLp.rightMargin = (int)(10 * scale);
+        iconContainerLp.rightMargin = (int)(12 * scale);
         iconContainer.setLayoutParams(iconContainerLp);
         
         android.graphics.drawable.GradientDrawable iconBg = new android.graphics.drawable.GradientDrawable();
-        iconBg.setColor(Color.parseColor("#1C00E5FF")); // subtle cyber cyan tint
-        iconBg.setCornerRadius(19 * scale);
-        iconBg.setStroke((int)(1.5f * scale), Color.parseColor("#3300E5FF"));
+        iconBg.setColor(Color.parseColor("#1F0A84FF")); // Liquid blue tint
+        iconBg.setCornerRadius(14 * scale);
+        iconBg.setStroke((int)(1.2f * scale), Color.parseColor("#4D0A84FF"));
         iconContainer.setBackground(iconBg);
         
         ImageView headerIcon = new ImageView(this);
@@ -3130,8 +3209,8 @@ public class PlayerActivity extends Activity {
         if (selectorIconId == 0) selectorIconId = getResources().getIdentifier("ic_settings_playlist", "drawable", getPackageName());
         if (selectorIconId == 0) selectorIconId = android.R.drawable.ic_menu_agenda;
         headerIcon.setImageResource(selectorIconId);
-        headerIcon.setColorFilter(Color.parseColor("#00E5FF"));
-        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams((int)(20 * scale), (int)(20 * scale), Gravity.CENTER);
+        headerIcon.setColorFilter(Color.parseColor("#40C4FF"));
+        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams((int)(22 * scale), (int)(22 * scale), Gravity.CENTER);
         iconContainer.addView(headerIcon, iconLp);
         
         LinearLayout textContainer = new LinearLayout(this);
@@ -3141,15 +3220,15 @@ public class PlayerActivity extends Activity {
         textContainer.setLayoutParams(textLp);
         
         TextView titleTv = new TextView(this);
-        titleTv.setText("سينما التلفاز");
+        titleTv.setText(isSeries ? "دليل المسلسلات والحلقات" : "دليل الأفلام السينمائية");
         titleTv.setTextColor(Color.WHITE);
-        titleTv.setTextSize(19);
-        titleTv.setTypeface(null, android.graphics.Typeface.BOLD);
+        titleTv.setTextSize(17);
+        titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
         titleTv.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
         
         TextView subtitleTv = new TextView(this);
-        subtitleTv.setText("تصفح الحلقات والأفلام الحالية");
-        subtitleTv.setTextColor(Color.parseColor("#7E828C"));
+        subtitleTv.setText(isSeries ? "تنقل فوري بين الحلقات والتصنيفات" : "تنقل سريع وتصفح مكتبة الأفلام");
+        subtitleTv.setTextColor(Color.parseColor("#8E919C"));
         subtitleTv.setTextSize(10.5f);
         subtitleTv.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
         
@@ -3163,8 +3242,8 @@ public class PlayerActivity extends Activity {
         } catch (Exception e) {
             clockTv.setText("");
         }
-        clockTv.setTextColor(Color.parseColor("#00E5FF"));
-        clockTv.setTextSize(13);
+        clockTv.setTextColor(Color.parseColor("#40C4FF"));
+        clockTv.setTextSize(12.5f);
         clockTv.setTypeface(Typeface.create("sans-serif-thin", Typeface.BOLD));
         LinearLayout.LayoutParams clockLp = new LinearLayout.LayoutParams(-2, -2);
         clockLp.leftMargin = (int)(8 * scale);
@@ -3177,11 +3256,11 @@ public class PlayerActivity extends Activity {
         
         // Sleek horizontal divider
         View headerDivider = new View(this);
-        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(-1, (int)(1.5f * scale));
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(-1, (int)(1.2f * scale));
         divLp.topMargin = (int)(4 * scale);
-        divLp.bottomMargin = (int)(16 * scale);
+        divLp.bottomMargin = (int)(14 * scale);
         headerDivider.setLayoutParams(divLp);
-        headerDivider.setBackgroundColor(Color.parseColor("#15FFFFFF"));
+        headerDivider.setBackgroundColor(Color.parseColor("#1FFFFFFF"));
         drawer.addView(headerDivider);
 
         LinearLayout listsContainer = new LinearLayout(this);
@@ -3191,20 +3270,20 @@ public class PlayerActivity extends Activity {
         
         final RecyclerView rvCats = new RecyclerView(this);
         rvCats.setLayoutManager(new LinearLayoutManager(this));
-        LinearLayout.LayoutParams catsLp = new LinearLayout.LayoutParams((int)(140 * scale), -1);
+        LinearLayout.LayoutParams catsLp = new LinearLayout.LayoutParams((int)(145 * scale), -1);
         rvCats.setLayoutParams(catsLp);
         
         View divider = new View(this);
-        LinearLayout.LayoutParams vDivLp = new LinearLayout.LayoutParams((int)(1.5f * scale), -1);
+        LinearLayout.LayoutParams vDivLp = new LinearLayout.LayoutParams((int)(1.2f * scale), -1);
         vDivLp.leftMargin = (int)(8 * scale);
         vDivLp.rightMargin = (int)(8 * scale);
         divider.setLayoutParams(vDivLp);
-        divider.setBackgroundColor(Color.parseColor("#15FFFFFF"));
+        divider.setBackgroundColor(Color.parseColor("#1FFFFFFF"));
         
         final RecyclerView rvItems = new RecyclerView(this);
         rvItems.setLayoutManager(new LinearLayoutManager(this));
         LinearLayout.LayoutParams itemsLp = new LinearLayout.LayoutParams(0, -1, 1.0f);
-        itemsLp.leftMargin = (int)(10 * scale);
+        itemsLp.leftMargin = (int)(8 * scale);
         rvItems.setLayoutParams(itemsLp);
         
         listsContainer.addView(rvCats);
@@ -3222,7 +3301,7 @@ public class PlayerActivity extends Activity {
         int targetItemIdx = -1;
         String targetCatId = "";
         
-        if (SeriesepisodesActivity.cachedEpisodes != null && !SeriesepisodesActivity.cachedEpisodes.isEmpty()) {
+        if (isSeries && SeriesepisodesActivity.cachedEpisodes != null && !SeriesepisodesActivity.cachedEpisodes.isEmpty()) {
             boolean isEpisode = false;
             for (int i = 0; i < SeriesepisodesActivity.cachedEpisodes.size(); i++) {
                 SeriesepisodesActivity.EpisodeItem ep = SeriesepisodesActivity.cachedEpisodes.get(i);
@@ -3237,8 +3316,9 @@ public class PlayerActivity extends Activity {
             }
         }
         
-        if (targetCatId.isEmpty() && SeriesActivity.cachedMovies != null) {
-            for (SeriesActivity.SeriesItem m : SeriesActivity.cachedMovies) {
+        final List<SeriesActivity.SeriesItem> finalSourceItems = sourceItems;
+        if (targetCatId.isEmpty() && finalSourceItems != null) {
+            for (SeriesActivity.SeriesItem m : finalSourceItems) {
                 if (videoUrl != null && videoUrl.contains("/" + m.seriesId + ".")) {
                     targetCatId = m.category;
                     break;
@@ -3268,9 +3348,8 @@ public class PlayerActivity extends Activity {
                 }
             }
         } else {
-            List<SeriesActivity.SeriesItem> sourceItems = isSeries ? SeriesActivity.cachedSeries : SeriesActivity.cachedMovies;
-            if (sourceItems != null) {
-                for (SeriesActivity.SeriesItem m : sourceItems) {
+            if (finalSourceItems != null) {
+                for (SeriesActivity.SeriesItem m : finalSourceItems) {
                     if (m.category != null && m.category.equals(targetCatId)) {
                         menuMediaList.add(new QuickMediaItem(m.name, m.seriesId, m.containerExtension, m.cover, false));
                     }
@@ -3300,9 +3379,8 @@ public class PlayerActivity extends Activity {
                         }
                     }
                 } else {
-                    List<SeriesActivity.SeriesItem> sourceItems = isSeries ? SeriesActivity.cachedSeries : SeriesActivity.cachedMovies;
-                    if (sourceItems != null) {
-                        for (SeriesActivity.SeriesItem m : sourceItems) {
+                    if (finalSourceItems != null) {
+                        for (SeriesActivity.SeriesItem m : finalSourceItems) {
                             if (m.category != null && m.category.equals(catId)) {
                                 menuMediaList.add(new QuickMediaItem(m.name, m.seriesId, m.containerExtension, m.cover, false));
                             }
@@ -3426,67 +3504,68 @@ public class PlayerActivity extends Activity {
             LinearLayout row = new LinearLayout(parent.getContext());
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding((int)(8 * scale), (int)(10 * scale), (int)(8 * scale), (int)(10 * scale));
+            row.setPadding((int)(10 * scale), (int)(10 * scale), (int)(10 * scale), (int)(10 * scale));
             row.setFocusable(true);
             
             View ind = new View(parent.getContext());
             LinearLayout.LayoutParams indLp = new LinearLayout.LayoutParams((int)(3.5f * scale), (int)(18 * scale));
             ind.setLayoutParams(indLp);
             android.graphics.drawable.GradientDrawable indGd = new android.graphics.drawable.GradientDrawable();
-            indGd.setColor(Color.parseColor("#FF00E5FF")); // cyan indicator
+            indGd.setColor(Color.parseColor("#40C4FF")); // Specular cyan indicator
             indGd.setCornerRadius(2 * scale);
             ind.setBackground(indGd);
             ind.setTag("indicator");
             
             TextView tv = new TextView(parent.getContext());
             LinearLayout.LayoutParams tvLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
-            tvLp.leftMargin = (int)(6 * scale);
+            tvLp.leftMargin = (int)(8 * scale);
             tv.setLayoutParams(tvLp);
             tv.setTextColor(Color.WHITE);
-            tv.setTextSize(13);
+            tv.setTextSize(12.5f);
             tv.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
             tv.setTag("name");
             
             TextView badge = new TextView(parent.getContext());
-            badge.setPadding((int)(6 * scale), (int)(2 * scale), (int)(6 * scale), (int)(2 * scale));
-            badge.setTextSize(9.5f);
+            badge.setPadding((int)(7 * scale), (int)(2 * scale), (int)(7 * scale), (int)(2 * scale));
+            badge.setTextSize(10f);
             badge.setTag("badge");
             
             row.addView(ind);
             row.addView(tv);
             row.addView(badge);
             
-            TvUtil.applyTvFocusHighlight(row, 8.0f);
+            TvUtil.applyTvFocusHighlight(row, 12.0f);
             return new VH(row);
         }
         
         @Override
         public void onBindViewHolder(final VH holder, final int position) {
             final String[] item = items.get(position);
-            holder.tvName.setText(item[1]);
+            holder.tvName.setText(TvUtil.formatNameByLanguage(item[1]));
             holder.tvBadge.setText(item[2]);
             
             boolean isActive = (position == selectedPos);
             
             if (isActive) {
                 holder.indicator.setVisibility(View.VISIBLE);
-                holder.tvName.setTextColor(Color.parseColor("#FF00E5FF"));
-                holder.tvName.setTypeface(null, android.graphics.Typeface.BOLD);
+                holder.tvName.setTextColor(Color.parseColor("#40C4FF"));
+                holder.tvName.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
                 
                 android.graphics.drawable.GradientDrawable activeBg = new android.graphics.drawable.GradientDrawable();
-                activeBg.setColor(Color.parseColor("#1A00E5FF")); // subtle cyan glass
-                activeBg.setCornerRadius(8 * scale);
+                activeBg.setColor(Color.parseColor("#260A84FF")); // Apple liquid glass active fill
+                activeBg.setCornerRadius(12 * scale);
+                activeBg.setStroke((int)(1.2f * scale), Color.parseColor("#4D0A84FF"));
                 holder.layout.setBackground(activeBg);
                 
-                holder.tvBadge.setTextColor(Color.parseColor("#FF00E5FF"));
+                holder.tvBadge.setTextColor(Color.parseColor("#40C4FF"));
                 android.graphics.drawable.GradientDrawable badgeActiveBg = new android.graphics.drawable.GradientDrawable();
-                badgeActiveBg.setColor(Color.parseColor("#2500E5FF"));
+                badgeActiveBg.setColor(Color.parseColor("#330A84FF"));
                 badgeActiveBg.setCornerRadius(10 * scale);
                 holder.tvBadge.setBackground(badgeActiveBg);
             } else {
                 holder.indicator.setVisibility(View.INVISIBLE);
-                holder.tvName.setTextColor(Color.parseColor("#D0D0D5"));
-                holder.tvName.setTypeface(null, android.graphics.Typeface.NORMAL);
+                holder.tvName.setTextColor(Color.parseColor("#D0D3DB"));
+                holder.tvName.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
                 holder.layout.setBackground(null);
                 
                 holder.tvBadge.setTextColor(Color.parseColor("#8E919C"));
@@ -3561,7 +3640,7 @@ public class PlayerActivity extends Activity {
             LinearLayout row = new LinearLayout(parent.getContext());
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-            row.setPadding((int)(8 * scale), (int)(6 * scale), (int)(8 * scale), (int)(6 * scale));
+            row.setPadding((int)(10 * scale), (int)(7 * scale), (int)(10 * scale), (int)(7 * scale));
             row.setFocusable(true);
             
             View ind = new View(parent.getContext());
@@ -3569,7 +3648,7 @@ public class PlayerActivity extends Activity {
             indLp.rightMargin = (int)(6 * scale);
             ind.setLayoutParams(indLp);
             android.graphics.drawable.GradientDrawable indGd = new android.graphics.drawable.GradientDrawable();
-            indGd.setColor(Color.parseColor("#FF00E5FF")); // active channel/movie color
+            indGd.setColor(Color.parseColor("#40C4FF")); // Cyan accent
             indGd.setCornerRadius(2 * scale);
             ind.setBackground(indGd);
             ind.setTag("indicator");
@@ -3580,35 +3659,45 @@ public class PlayerActivity extends Activity {
             tvNum.setTextColor(Color.parseColor("#6B6D7A"));
             tvNum.setTypeface(Typeface.create("sans-serif-condensed", Typeface.NORMAL));
             LinearLayout.LayoutParams numLp = new LinearLayout.LayoutParams(-2, -2);
-            numLp.rightMargin = (int)(6 * scale);
+            numLp.rightMargin = (int)(8 * scale);
             tvNum.setLayoutParams(numLp);
             
-            // Beautiful rounded vertical cover container for movies/episodes
+            // Beautiful rounded vertical cover container for movies/episodes (Apple squircle)
             FrameLayout imgContainer = new FrameLayout(parent.getContext());
-            LinearLayout.LayoutParams imgLp = new LinearLayout.LayoutParams((int)(34 * scale), (int)(50 * scale));
-            imgLp.rightMargin = (int)(8 * scale);
+            LinearLayout.LayoutParams imgLp = new LinearLayout.LayoutParams((int)(36 * scale), (int)(52 * scale));
+            imgLp.rightMargin = (int)(10 * scale);
             imgContainer.setLayoutParams(imgLp);
             
             android.graphics.drawable.GradientDrawable imgBg = new android.graphics.drawable.GradientDrawable();
-            imgBg.setColor(Color.parseColor("#12FFFFFF")); // subtle glass shape
-            imgBg.setCornerRadius(6 * scale);
-            imgBg.setStroke((int)(1 * scale), Color.parseColor("#1BFFFFFF"));
+            imgBg.setColor(Color.parseColor("#14FFFFFF")); // Frosted glass shape
+            imgBg.setCornerRadius(8 * scale);
+            imgBg.setStroke((int)(1 * scale), Color.parseColor("#2680B4FF"));
             imgContainer.setBackground(imgBg);
             imgContainer.setPadding((int)(3 * scale), (int)(3 * scale), (int)(3 * scale), (int)(3 * scale));
             
             ImageView iv = new ImageView(parent.getContext());
             iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
             iv.setTag("cover");
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                iv.setClipToOutline(true);
+                iv.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(View view, android.graphics.Outline outline) {
+                        outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), 6 * scale);
+                    }
+                });
+            }
             imgContainer.addView(iv, new FrameLayout.LayoutParams(-1, -1));
             
             TextView tv = new TextView(parent.getContext());
             LinearLayout.LayoutParams tvLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
             tv.setLayoutParams(tvLp);
             tv.setTextColor(Color.WHITE);
-            tv.setTextSize(13.5f);
+            tv.setTextSize(13f);
             tv.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
             tv.setSingleLine(true);
             tv.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);
+            tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
             tv.setTag("name");
             
             row.addView(ind);
@@ -3616,7 +3705,7 @@ public class PlayerActivity extends Activity {
             row.addView(imgContainer);
             row.addView(tv);
             
-            TvUtil.applyTvFocusHighlight(row, 8.0f);
+            TvUtil.applyTvFocusHighlight(row, 12.0f);
             return new VH(row);
         }
         
@@ -3638,20 +3727,21 @@ public class PlayerActivity extends Activity {
             boolean isActive = (position == selectedPos);
             if (isActive) {
                 holder.indicator.setVisibility(View.VISIBLE);
-                holder.tvName.setTextColor(Color.parseColor("#FF00E5FF"));
-                holder.tvName.setTypeface(null, android.graphics.Typeface.BOLD);
+                holder.tvName.setTextColor(Color.parseColor("#40C4FF"));
+                holder.tvName.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
                 if (holder.tvNum != null) {
-                    holder.tvNum.setTextColor(Color.parseColor("#FF00E5FF"));
+                    holder.tvNum.setTextColor(Color.parseColor("#40C4FF"));
                 }
                 
                 android.graphics.drawable.GradientDrawable activeBg = new android.graphics.drawable.GradientDrawable();
-                activeBg.setColor(Color.parseColor("#1A00E5FF"));
-                activeBg.setCornerRadius(8 * scale);
+                activeBg.setColor(Color.parseColor("#260A84FF")); // Frosted blue glass active
+                activeBg.setCornerRadius(12 * scale);
+                activeBg.setStroke((int)(1.2f * scale), Color.parseColor("#4D0A84FF"));
                 holder.layout.setBackground(activeBg);
             } else {
                 holder.indicator.setVisibility(View.INVISIBLE);
                 holder.tvName.setTextColor(Color.WHITE);
-                holder.tvName.setTypeface(null, android.graphics.Typeface.NORMAL);
+                holder.tvName.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
                 if (holder.tvNum != null) {
                     holder.tvNum.setTextColor(Color.parseColor("#6B6D7A"));
                 }

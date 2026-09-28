@@ -1450,21 +1450,21 @@ public class SeriesActivity extends Activity {
         }
     }
 
-    static class CategoryItem {
-        String name;
-        int count;
-        CategoryItem(String n, int c) {
+    public static class CategoryItem {
+        public String name;
+        public int count;
+        public CategoryItem(String n, int c) {
             name = n;
             count = c;
         }
     }
 
-    static class SeriesItem {
-        int num;
-        String name, cover, plot, cast, director, genre, releaseDate, rating, category, seriesId;
-        String containerExtension = "mp4";
+    public static class SeriesItem {
+        public int num;
+        public String name, cover, plot, cast, director, genre, releaseDate, rating, category, seriesId;
+        public String containerExtension = "mp4";
 
-        SeriesItem(int num, String name, String cover, String plot, String cast, String director, String genre, String releaseDate, String rating, String category, String seriesId) {
+        public SeriesItem(int num, String name, String cover, String plot, String cast, String director, String genre, String releaseDate, String rating, String category, String seriesId) {
             this.num = num;
             this.name = name;
             this.cover = cover;

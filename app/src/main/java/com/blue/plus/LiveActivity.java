@@ -3890,46 +3890,74 @@ public class LiveActivity extends Activity {
             return;
         }
 
+        // Strictly filter categories to avoid showing empty (0 items) categories!
+        final List<CategoryItem> validCategories = new ArrayList<>();
+        for (CategoryItem c : categories) {
+            if (c.name.equals(CAT_FAV)) {
+                if (favoriteChannels != null && !favoriteChannels.isEmpty()) {
+                    validCategories.add(new CategoryItem(c.name, favoriteChannels.size()));
+                }
+            } else if (c.name.equals(CAT_RECENT)) {
+                if (recentChannels != null && !recentChannels.isEmpty()) {
+                    validCategories.add(new CategoryItem(c.name, recentChannels.size()));
+                }
+            } else if (c.name.equals(CAT_ALL)) {
+                if (allChannels != null && !allChannels.isEmpty()) {
+                    validCategories.add(new CategoryItem(c.name, allChannels.size()));
+                }
+            } else {
+                if (c.count > 0) {
+                    validCategories.add(c);
+                }
+            }
+        }
+
+        if (validCategories.isEmpty()) {
+            Toast.makeText(this, "لا توجد قنوات لعرضها في الدليل", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         final Dialog d = new Dialog(this, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen);
         
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(0x88000000); // Sleek darkened overlay
+        root.setBackgroundColor(0x99000000); // Frosted darkened glass overlay
         root.setFocusable(false);
         
         LinearLayout drawer = new LinearLayout(this);
         drawer.setOrientation(LinearLayout.VERTICAL);
         
-        // Premium glassmorphic obsidian/blue receiver drawer background
+        // Apple iOS Liquid Glass Navigation Drawer
         GradientDrawable drawerBg = new GradientDrawable(
-            GradientDrawable.Orientation.LEFT_RIGHT,
-            new int[] { Color.parseColor("#F90A0B0E"), Color.parseColor("#F2121319") }
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[] { Color.parseColor("#F50B101C"), Color.parseColor("#F50D1526") }
         );
-        float r = 28 * dp;
-        drawerBg.setCornerRadii(new float[]{ 0, 0, r, r, r, r, 0, 0 }); // round right corners
+        float r = 24 * dp;
+        drawerBg.setCornerRadii(new float[]{ 0, 0, r, r, r, r, 0, 0 }); // Round right side corners
+        drawerBg.setStroke((int)(1.2f * dp), Color.parseColor("#3380B4FF")); // Specular cyan border
         drawer.setBackground(drawerBg);
         
-        FrameLayout.LayoutParams drawerLp = new FrameLayout.LayoutParams((int)(430 * dp), FrameLayout.LayoutParams.MATCH_PARENT, Gravity.LEFT);
+        FrameLayout.LayoutParams drawerLp = new FrameLayout.LayoutParams((int)(440 * dp), FrameLayout.LayoutParams.MATCH_PARENT, Gravity.LEFT);
         drawer.setLayoutParams(drawerLp);
-        drawer.setPadding((int)(16 * dp), (int)(24 * dp), (int)(16 * dp), (int)(24 * dp));
+        drawer.setPadding((int)(16 * dp), (int)(20 * dp), (int)(16 * dp), (int)(20 * dp));
         drawer.setFocusable(false);
         
-        // GORGEOUS SATELLITE/TV HEADER WITH CLOCK
+        // Liquid Glass Header with Icon & Live Clock
         LinearLayout headerLayout = new LinearLayout(this);
         headerLayout.setOrientation(LinearLayout.HORIZONTAL);
         headerLayout.setGravity(Gravity.CENTER_VERTICAL);
-        headerLayout.setPadding((int)(8 * dp), 0, (int)(8 * dp), (int)(12 * dp));
+        headerLayout.setPadding((int)(8 * dp), 0, (int)(8 * dp), (int)(10 * dp));
         headerLayout.setFocusable(false);
         
         FrameLayout iconContainer = new FrameLayout(this);
-        int containerSize = (int)(38 * dp);
+        int containerSize = (int)(40 * dp);
         LinearLayout.LayoutParams iconContainerLp = new LinearLayout.LayoutParams(containerSize, containerSize);
-        iconContainerLp.rightMargin = (int)(10 * dp);
+        iconContainerLp.rightMargin = (int)(12 * dp);
         iconContainer.setLayoutParams(iconContainerLp);
         
         GradientDrawable iconBg = new GradientDrawable();
-        iconBg.setColor(Color.parseColor("#1C00E5FF")); // subtle cyber cyan tint
-        iconBg.setCornerRadius(19 * dp);
-        iconBg.setStroke((int)(1.5f * dp), Color.parseColor("#3300E5FF"));
+        iconBg.setColor(Color.parseColor("#1F0A84FF")); // Liquid blue tint
+        iconBg.setCornerRadius(14 * dp);
+        iconBg.setStroke((int)(1.2f * dp), Color.parseColor("#4D0A84FF"));
         iconContainer.setBackground(iconBg);
         
         ImageView headerIcon = new ImageView(this);
@@ -3940,8 +3968,8 @@ public class LiveActivity extends Activity {
         } else {
             headerIcon.setImageResource(R.drawable.home_logo);
         }
-        headerIcon.setColorFilter(Color.parseColor("#00E5FF"));
-        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams((int)(20 * dp), (int)(20 * dp), Gravity.CENTER);
+        headerIcon.setColorFilter(Color.parseColor("#40C4FF"));
+        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams((int)(22 * dp), (int)(22 * dp), Gravity.CENTER);
         iconContainer.addView(headerIcon, iconLp);
         
         LinearLayout textContainer = new LinearLayout(this);
@@ -3953,13 +3981,13 @@ public class LiveActivity extends Activity {
         TextView titleTv = new TextView(this);
         titleTv.setText(TvUtil.translate(this, "دليل القنوات"));
         titleTv.setTextColor(Color.WHITE);
-        titleTv.setTextSize(19);
-        titleTv.setTypeface(null, android.graphics.Typeface.BOLD);
+        titleTv.setTextSize(17);
+        titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
         titleTv.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
         
         TextView subtitleTv = new TextView(this);
         subtitleTv.setText(TvUtil.translate(this, "التنقل السريع بين قنوات البث المباشر"));
-        subtitleTv.setTextColor(Color.parseColor("#7E828C"));
+        subtitleTv.setTextColor(Color.parseColor("#8E919C"));
         subtitleTv.setTextSize(10.5f);
         subtitleTv.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
         
@@ -3973,8 +4001,8 @@ public class LiveActivity extends Activity {
         } catch (Exception e) {
             clockTv.setText("");
         }
-        clockTv.setTextColor(Color.parseColor("#00E5FF"));
-        clockTv.setTextSize(13);
+        clockTv.setTextColor(Color.parseColor("#40C4FF"));
+        clockTv.setTextSize(12.5f);
         clockTv.setTypeface(Typeface.create("sans-serif-thin", Typeface.BOLD));
         LinearLayout.LayoutParams clockLp = new LinearLayout.LayoutParams(-2, -2);
         clockLp.leftMargin = (int)(8 * dp);
@@ -3987,11 +4015,11 @@ public class LiveActivity extends Activity {
         
         // Sleek horizontal divider
         View headerDivider = new View(this);
-        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(-1, (int)(1.5f * dp));
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(-1, (int)(1.2f * dp));
         divLp.topMargin = (int)(4 * dp);
-        divLp.bottomMargin = (int)(16 * dp);
+        divLp.bottomMargin = (int)(14 * dp);
         headerDivider.setLayoutParams(divLp);
-        headerDivider.setBackgroundColor(Color.parseColor("#15FFFFFF"));
+        headerDivider.setBackgroundColor(Color.parseColor("#1FFFFFFF"));
         drawer.addView(headerDivider);
 
         LinearLayout listsContainer = new LinearLayout(this);
@@ -4001,20 +4029,20 @@ public class LiveActivity extends Activity {
         
         final RecyclerView rvCats = new RecyclerView(this);
         rvCats.setLayoutManager(new LinearLayoutManager(this));
-        LinearLayout.LayoutParams catsLp = new LinearLayout.LayoutParams((int)(140 * dp), -1);
+        LinearLayout.LayoutParams catsLp = new LinearLayout.LayoutParams((int)(145 * dp), -1);
         rvCats.setLayoutParams(catsLp);
         
         View divider = new View(this);
-        LinearLayout.LayoutParams vDivLp = new LinearLayout.LayoutParams((int)(1.5f * dp), -1);
+        LinearLayout.LayoutParams vDivLp = new LinearLayout.LayoutParams((int)(1.2f * dp), -1);
         vDivLp.leftMargin = (int)(8 * dp);
         vDivLp.rightMargin = (int)(8 * dp);
         divider.setLayoutParams(vDivLp);
-        divider.setBackgroundColor(Color.parseColor("#15FFFFFF"));
+        divider.setBackgroundColor(Color.parseColor("#1FFFFFFF"));
         
         final RecyclerView rvChans = new RecyclerView(this);
         rvChans.setLayoutManager(new LinearLayoutManager(this));
         LinearLayout.LayoutParams chansLp = new LinearLayout.LayoutParams(0, -1, 1.0f);
-        chansLp.leftMargin = (int)(10 * dp);
+        chansLp.leftMargin = (int)(8 * dp);
         rvChans.setLayoutParams(chansLp);
         
         listsContainer.addView(rvCats);
@@ -4030,13 +4058,14 @@ public class LiveActivity extends Activity {
         
         int targetCatIdx = 0;
         int targetChanIdx = -1;
-        String currentCatName = CAT_ALL;
+        String currentCatName = validCategories.get(0).name;
         
         if (currentChannel != null) {
-            currentCatName = currentChannel.category;
-            for (int i = 0; i < categories.size(); i++) {
-                if (categories.get(i).name.equals(currentCatName)) {
+            String chanCat = currentChannel.category;
+            for (int i = 0; i < validCategories.size(); i++) {
+                if (validCategories.get(i).name.equals(chanCat)) {
                     targetCatIdx = i;
+                    currentCatName = chanCat;
                     break;
                 }
             }
@@ -4071,7 +4100,7 @@ public class LiveActivity extends Activity {
         chanAdapter.selectedPos = targetChanIdx;
         chanAdapter.notifyDataSetChanged();
         
-        final QuickMenuCatAdapter catAdapter = new QuickMenuCatAdapter(categories, dp, new QuickMenuCatAdapter.OnCategoryFocusedListener() {
+        final QuickMenuCatAdapter catAdapter = new QuickMenuCatAdapter(validCategories, dp, new QuickMenuCatAdapter.OnCategoryFocusedListener() {
             @Override
             public void onCategoryFocused(String categoryName) {
                 menuChannelsList.clear();
@@ -4196,67 +4225,68 @@ public class LiveActivity extends Activity {
             LinearLayout row = new LinearLayout(parent.getContext());
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding((int)(8 * dp), (int)(10 * dp), (int)(8 * dp), (int)(10 * dp));
+            row.setPadding((int)(10 * dp), (int)(10 * dp), (int)(10 * dp), (int)(10 * dp));
             row.setFocusable(true);
             
             View ind = new View(parent.getContext());
             LinearLayout.LayoutParams indLp = new LinearLayout.LayoutParams((int)(3.5f * dp), (int)(18 * dp));
             ind.setLayoutParams(indLp);
             GradientDrawable indGd = new GradientDrawable();
-            indGd.setColor(Color.parseColor("#FF00E5FF")); // cyan indicator
+            indGd.setColor(Color.parseColor("#40C4FF")); // Cyan accent
             indGd.setCornerRadius(2 * dp);
             ind.setBackground(indGd);
             ind.setTag("indicator");
             
             TextView tv = new TextView(parent.getContext());
             LinearLayout.LayoutParams tvLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
-            tvLp.leftMargin = (int)(6 * dp);
+            tvLp.leftMargin = (int)(8 * dp);
             tv.setLayoutParams(tvLp);
             tv.setTextColor(Color.WHITE);
-            tv.setTextSize(13);
+            tv.setTextSize(12.5f);
             tv.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
             tv.setTag("name");
             
             TextView badge = new TextView(parent.getContext());
-            badge.setPadding((int)(6 * dp), (int)(2 * dp), (int)(6 * dp), (int)(2 * dp));
-            badge.setTextSize(9.5f);
+            badge.setPadding((int)(7 * dp), (int)(2 * dp), (int)(7 * dp), (int)(2 * dp));
+            badge.setTextSize(10f);
             badge.setTag("badge");
             
             row.addView(ind);
             row.addView(tv);
             row.addView(badge);
             
-            TvUtil.applyTvFocusHighlight(row, 8.0f);
+            TvUtil.applyTvFocusHighlight(row, 12.0f);
             return new VH(row);
         }
         
         @Override
         public void onBindViewHolder(final VH holder, final int position) {
             final CategoryItem item = items.get(position);
-            holder.tvName.setText(item.name);
+            holder.tvName.setText(TvUtil.formatNameByLanguage(item.name));
             holder.tvBadge.setText(String.valueOf(item.count));
             
             boolean isActive = (position == selectedPos);
             
             if (isActive) {
                 holder.indicator.setVisibility(View.VISIBLE);
-                holder.tvName.setTextColor(Color.parseColor("#FF00E5FF"));
-                holder.tvName.setTypeface(null, Typeface.BOLD);
+                holder.tvName.setTextColor(Color.parseColor("#40C4FF"));
+                holder.tvName.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
                 
                 GradientDrawable activeBg = new GradientDrawable();
-                activeBg.setColor(Color.parseColor("#1A00E5FF")); // subtle cyan glass
-                activeBg.setCornerRadius(8 * dp);
+                activeBg.setColor(Color.parseColor("#260A84FF")); // Liquid blue active fill
+                activeBg.setCornerRadius(12 * dp);
+                activeBg.setStroke((int)(1.2f * dp), Color.parseColor("#4D0A84FF"));
                 holder.layout.setBackground(activeBg);
                 
-                holder.tvBadge.setTextColor(Color.parseColor("#FF00E5FF"));
+                holder.tvBadge.setTextColor(Color.parseColor("#40C4FF"));
                 GradientDrawable badgeActiveBg = new GradientDrawable();
-                badgeActiveBg.setColor(Color.parseColor("#2500E5FF"));
+                badgeActiveBg.setColor(Color.parseColor("#330A84FF"));
                 badgeActiveBg.setCornerRadius(10 * dp);
                 holder.tvBadge.setBackground(badgeActiveBg);
             } else {
                 holder.indicator.setVisibility(View.INVISIBLE);
-                holder.tvName.setTextColor(Color.parseColor("#D0D0D5"));
-                holder.tvName.setTypeface(null, Typeface.NORMAL);
+                holder.tvName.setTextColor(Color.parseColor("#D0D3DB"));
+                holder.tvName.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
                 holder.layout.setBackground(null);
                 
                 holder.tvBadge.setTextColor(Color.parseColor("#8E919C"));
@@ -4331,7 +4361,7 @@ public class LiveActivity extends Activity {
             LinearLayout row = new LinearLayout(parent.getContext());
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-            row.setPadding((int)(8 * dp), (int)(8 * dp), (int)(8 * dp), (int)(8 * dp));
+            row.setPadding((int)(10 * dp), (int)(8 * dp), (int)(10 * dp), (int)(8 * dp));
             row.setFocusable(true);
             
             View ind = new View(parent.getContext());
@@ -4339,7 +4369,7 @@ public class LiveActivity extends Activity {
             indLp.rightMargin = (int)(6 * dp);
             ind.setLayoutParams(indLp);
             GradientDrawable indGd = new GradientDrawable();
-            indGd.setColor(Color.parseColor("#FF00E5FF")); // active channel color
+            indGd.setColor(Color.parseColor("#40C4FF")); // cyan accent
             indGd.setCornerRadius(2 * dp);
             ind.setBackground(indGd);
             ind.setTag("indicator");
@@ -4350,17 +4380,17 @@ public class LiveActivity extends Activity {
             tvNum.setTextColor(Color.parseColor("#6B6D7A"));
             tvNum.setTypeface(Typeface.create("sans-serif-condensed", Typeface.NORMAL));
             LinearLayout.LayoutParams numLp = new LinearLayout.LayoutParams(-2, -2);
-            numLp.rightMargin = (int)(6 * dp);
+            numLp.rightMargin = (int)(8 * dp);
             tvNum.setLayoutParams(numLp);
             
             FrameLayout imgContainer = new FrameLayout(parent.getContext());
-            LinearLayout.LayoutParams imgLp = new LinearLayout.LayoutParams((int)(36 * dp), (int)(36 * dp));
-            imgLp.rightMargin = (int)(8 * dp);
+            LinearLayout.LayoutParams imgLp = new LinearLayout.LayoutParams((int)(38 * dp), (int)(38 * dp));
+            imgLp.rightMargin = (int)(10 * dp);
             imgContainer.setLayoutParams(imgLp);
             GradientDrawable imgBg = new GradientDrawable();
-            imgBg.setColor(Color.parseColor("#12FFFFFF")); // elegant circular logo border
-            imgBg.setCornerRadius(18 * dp);
-            imgBg.setStroke((int)(1 * dp), Color.parseColor("#1BFFFFFF"));
+            imgBg.setColor(Color.parseColor("#14FFFFFF")); // elegant circular logo border
+            imgBg.setCornerRadius(19 * dp);
+            imgBg.setStroke((int)(1 * dp), Color.parseColor("#2680B4FF"));
             imgContainer.setBackground(imgBg);
             imgContainer.setPadding((int)(4 * dp), (int)(4 * dp), (int)(4 * dp), (int)(4 * dp));
             
@@ -4373,10 +4403,11 @@ public class LiveActivity extends Activity {
             LinearLayout.LayoutParams tvLp = new LinearLayout.LayoutParams(0, -2, 1.0f);
             tv.setLayoutParams(tvLp);
             tv.setTextColor(Color.WHITE);
-            tv.setTextSize(13.5f);
+            tv.setTextSize(13f);
             tv.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
             tv.setSingleLine(true);
             tv.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);
+            tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
             tv.setTag("name");
             
             row.addView(ind);
@@ -4384,7 +4415,7 @@ public class LiveActivity extends Activity {
             row.addView(imgContainer);
             row.addView(tv);
             
-            TvUtil.applyTvFocusHighlight(row, 8.0f);
+            TvUtil.applyTvFocusHighlight(row, 12.0f);
             return new VH(row);
         }
         
@@ -4406,20 +4437,21 @@ public class LiveActivity extends Activity {
             boolean isActive = (position == selectedPos);
             if (isActive) {
                 holder.indicator.setVisibility(View.VISIBLE);
-                holder.tvName.setTextColor(Color.parseColor("#FF00E5FF"));
-                holder.tvName.setTypeface(null, Typeface.BOLD);
+                holder.tvName.setTextColor(Color.parseColor("#40C4FF"));
+                holder.tvName.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
                 if (holder.tvNum != null) {
-                    holder.tvNum.setTextColor(Color.parseColor("#FF00E5FF"));
+                    holder.tvNum.setTextColor(Color.parseColor("#40C4FF"));
                 }
                 
                 GradientDrawable activeBg = new GradientDrawable();
-                activeBg.setColor(Color.parseColor("#1A00E5FF"));
-                activeBg.setCornerRadius(8 * dp);
+                activeBg.setColor(Color.parseColor("#260A84FF"));
+                activeBg.setCornerRadius(12 * dp);
+                activeBg.setStroke((int)(1.2f * dp), Color.parseColor("#4D0A84FF"));
                 holder.layout.setBackground(activeBg);
             } else {
                 holder.indicator.setVisibility(View.INVISIBLE);
                 holder.tvName.setTextColor(Color.WHITE);
-                holder.tvName.setTypeface(null, Typeface.NORMAL);
+                holder.tvName.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
                 if (holder.tvNum != null) {
                     holder.tvNum.setTextColor(Color.parseColor("#6B6D7A"));
                 }
